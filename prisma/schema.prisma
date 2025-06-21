@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  password     String
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  createdById  String?
+  name         String
+  role         UserRole         @default(SUB_ADMIN)
+
+  // New comprehensive sub-admin fields
+  subAdminOnboardingDate DateTime?
+  address                String?
+  city                   String?
+  state                  String?
+  country                String?
+  username               String?
+  panNumber              String?
+  termOfWork             String?
+
+  // File URLs for sub-admin documents
+  tdsFileUrl             String?
+  ndaFileUrl             String?
+  employmentAgreementUrl String?
+  panCardFileUrl         String?
+  otherDocsUrls          String[] // Array of document URLs
+
+  activities   ActivityLog[]
+  customers    Customer[]
+  orders       Order[]
+  permissions  UserPermission[]
+  createdBy    User?            @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers User[]           @relation("UserCreatedBy")
+  vendors      Vendor[]
+
+  @@map("users")
+}
+
+model UserPermission {
+  id         String     @id @default(cuid())
+  userId     String
+  permission Permission
+  createdAt  DateTime   @default(now())
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+  @@map("user_permissions")
+}
+
+model Customer {
+  id                    String   @id @default(cuid())
+  name                  String
+  email                 String   @unique
+  phone                 String?
+  company               String?
+  country               String
+  address               String?
+
+  // New comprehensive fields
+  clientOnboardingDate  DateTime?
+  companyType           String?
+  companyName           String?
+  individualName        String?
+  city                  String?
+  state                 String?
+  username              String?
+  gstNumber             String?
+  dpiitRegister         String?
+  dpiitValidTill        DateTime?
+  pointOfContact        String?  // JSON string of contact information
+
+  // File URLs
+  dpiitCertificateUrl   String?
+  tdsFileUrl            String?
+  gstFileUrl            String?
+  ndaFileUrl            String?
+  agreementFileUrl      String?
+  quotationFileUrl      String?
+  panCardFileUrl        String?
+  udhyamRegistrationUrl String?
+  otherDocsUrls         String[] // Array of document URLs
+
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  createdById           String
+  createdBy             User     @relation(fields: [createdById], references: [id])
+  orders                Order[]
+
+  @@map("customers")
+}
+
+model Vendor {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  phone            String?
+  company          String
+  country          String
+  address          String?
+  specialization   String?
+  onboardingDate   DateTime?
+  companyType      String?
+  companyName      String?
+  individualName   String?
+  city             String?
+  state            String?
+  username         String?
+  gstNumber        String?
+  startupBenefits  String?
+  typeOfWork       String[]
+  pointsOfContact  String?
+  gstFileUrl       String?
+  ndaFileUrl       String?
+  agreementFileUrl String?
+  companyLogoUrl   String?
+  otherDocsUrls    String[]
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  createdById      String
+  orders           Order[]
+  createdBy        User      @relation(fields: [createdById], references: [id])
+
+  @@map("vendors")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  referenceNumber String        @unique
+  title           String
+  description     String?
+  type            OrderType
+  status          OrderStatus   @default(YET_TO_START)
+  country         String
+  priority        Priority      @default(MEDIUM)
+  startDate       DateTime?
+  dueDate         DateTime?
+  completedDate   DateTime?
+  amount          Float?
+  paidAmount      Float         @default(0)
+  currency        String        @default("USD")
+  customerId      String
+  vendorId        String?
+  assignedToId    String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  activities      ActivityLog[]
+  invoices        Invoice[]
+  assignedTo      User          @relation(fields: [assignedToId], references: [id])
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  vendor          Vendor?       @relation(fields: [vendorId], references: [id])
+
+  @@map("orders")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  orderId       String
+  amount        Float
+  paidAmount    Float         @default(0)
+  currency      String        @default("USD")
+  status        InvoiceStatus @default(PENDING)
+  dueDate       DateTime
+  paidDate      DateTime?
+  imageUrl      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  action      String
+  description String
+  entityType  String
+  entityId    String
+  userId      String
+  orderId     String?
+  createdAt   DateTime @default(now())
+  order       Order?   @relation(fields: [orderId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+enum UserRole {
+  ADMIN
+  SUB_ADMIN
+}
+
+enum Permission {
+  MANAGE_USERS
+  MANAGE_CUSTOMERS
+  MANAGE_VENDORS
+  MANAGE_ORDERS
+  VIEW_ANALYTICS
+  MANAGE_PAYMENTS
+  VIEW_REPORTS
+}
+
+enum OrderType {
+  PATENT
+  TRADEMARK
+  COPYRIGHT
+  DESIGN
+}
+
+enum OrderStatus {
+  YET_TO_START
+  IN_PROGRESS
+  PENDING_WITH_CLIENT
+  PENDING_PAYMENT
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}

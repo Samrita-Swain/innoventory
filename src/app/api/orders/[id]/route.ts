@@ -1,0 +1,284 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { verifyToken } from '@/lib/auth'
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const payload = verifyToken(token)
+
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // Check permissions
+    if (!payload.permissions.includes('MANAGE_ORDERS')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const { id: orderId } = await params
+    const body = await request.json()
+
+    // Check if this is a status-only update or full order update
+    if (body.status && Object.keys(body).length === 1) {
+      // Status-only update (existing functionality)
+      const { status } = body
+
+      // Validate status
+      const validStatuses = [
+        'YET_TO_START',
+        'IN_PROGRESS',
+        'PENDING_WITH_CLIENT',
+        'PENDING_PAYMENT',
+        'COMPLETED',
+        'CLOSED',
+        'CANCELLED'
+      ]
+
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({
+          error: 'Invalid status',
+          details: `Status must be one of: ${validStatuses.join(', ')}`
+        }, { status: 400 })
+      }
+
+      // Check if order exists
+      const existingOrder = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          customer: { select: { name: true, company: true } },
+          vendor: { select: { name: true, company: true } },
+          assignedTo: { select: { name: true } }
+        }
+      })
+
+      if (!existingOrder) {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+
+      // Update order status
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: status as 'YET_TO_START' | 'IN_PROGRESS' | 'PENDING_WITH_CLIENT' | 'PENDING_PAYMENT' | 'COMPLETED' | 'CLOSED' | 'CANCELLED',
+          // Set completion date if status is COMPLETED
+          completedDate: status === 'COMPLETED' ? new Date() : existingOrder.completedDate
+        },
+        include: {
+          customer: { select: { name: true, company: true } },
+          vendor: { select: { name: true, company: true } },
+          assignedTo: { select: { name: true } }
+        }
+      })
+
+      // Log activity
+      await prisma.activityLog.create({
+        data: {
+          action: 'ORDER_STATUS_UPDATED',
+          description: `Order status changed from ${existingOrder.status} to ${status}`,
+          entityType: 'Order',
+          entityId: orderId,
+          userId: payload.userId,
+          orderId: orderId
+        }
+      })
+
+      return NextResponse.json(updatedOrder)
+    } else {
+      // Full order update (new functionality for edit page)
+      const { title, description, type, status, priority, country, amount, paidAmount, dueDate } = body
+
+      // Check if order exists
+      const existingOrder = await prisma.order.findUnique({
+        where: { id: orderId }
+      })
+
+      if (!existingOrder) {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+
+      // Prepare update data
+      const updateData: any = {}
+      if (title !== undefined) updateData.title = title
+      if (description !== undefined) updateData.description = description
+      if (type !== undefined) updateData.type = type
+      if (status !== undefined) updateData.status = status
+      if (priority !== undefined) updateData.priority = priority
+      if (country !== undefined) updateData.country = country
+      if (amount !== undefined) updateData.amount = parseFloat(amount)
+      if (paidAmount !== undefined) updateData.paidAmount = parseFloat(paidAmount)
+      if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
+
+      // Set completion date if status is COMPLETED
+      if (status === 'COMPLETED' && existingOrder.status !== 'COMPLETED') {
+        updateData.completedDate = new Date()
+      }
+
+      // Update order
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: updateData,
+        include: {
+          customer: { select: { name: true, company: true } },
+          vendor: { select: { name: true, company: true } },
+          assignedTo: { select: { name: true } }
+        }
+      })
+
+      // Log activity
+      await prisma.activityLog.create({
+        data: {
+          action: 'ORDER_UPDATED',
+          description: `Order ${existingOrder.referenceNumber} was updated`,
+          entityType: 'Order',
+          entityId: orderId,
+          userId: payload.userId,
+          orderId: orderId
+        }
+      })
+
+      return NextResponse.json(updatedOrder)
+    }
+
+  } catch (error) {
+    console.error('Update order error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const payload = verifyToken(token)
+
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const { id: orderId } = await params
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: { select: { name: true, company: true, email: true, phone: true } },
+        vendor: { select: { name: true, company: true, email: true, phone: true } },
+        assignedTo: { select: { name: true, email: true } },
+        activities: {
+          include: {
+            user: { select: { name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    })
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(order)
+
+  } catch (error) {
+    console.error('Get order error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const payload = verifyToken(token)
+
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // Check permissions
+    if (!payload.permissions.includes('MANAGE_ORDERS')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const { id: orderId } = await params
+
+    // Check if order exists
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: { select: { name: true, company: true } },
+        vendor: { select: { name: true, company: true } },
+        assignedTo: { select: { name: true } }
+      }
+    })
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    // Delete related activity logs first
+    await prisma.activityLog.deleteMany({
+      where: { orderId: orderId }
+    })
+
+    // Delete the order
+    await prisma.order.delete({
+      where: { id: orderId }
+    })
+
+    // Log the deletion activity
+    await prisma.activityLog.create({
+      data: {
+        action: 'ORDER_DELETED',
+        description: `Order ${existingOrder.referenceNumber} was deleted`,
+        entityType: 'Order',
+        entityId: orderId,
+        userId: payload.userId
+      }
+    })
+
+    return NextResponse.json({
+      message: 'Order deleted successfully',
+      deletedOrder: {
+        id: existingOrder.id,
+        referenceNumber: existingOrder.referenceNumber,
+        title: existingOrder.title
+      }
+    })
+
+  } catch (error) {
+    console.error('Delete order error:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}

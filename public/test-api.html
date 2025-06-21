@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Vendor API</title>
+</head>
+<body>
+    <h1>Test Vendor API</h1>
+    <button onclick="testAPI()">Test Create Vendor</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+
+            try {
+                // Create form data
+                const formData = new FormData();
+                formData.append('companyType', 'Individual');
+                formData.append('individualName', 'Test User ' + Date.now());
+                formData.append('email', 'test' + Date.now() + '@example.com');
+                formData.append('phone', '+1234567890');
+                formData.append('address', '123 Test Street');
+                formData.append('country', 'United States');
+                formData.append('city', 'New York');
+                formData.append('state', 'New York');
+                formData.append('username', 'testuser' + Date.now());
+                formData.append('typeOfWork', JSON.stringify(['Patents', 'Trademarks']));
+                formData.append('pointsOfContact', JSON.stringify([]));
+
+                // Get token from localStorage (assuming user is logged in)
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    resultDiv.innerHTML = '<p style="color: red;">No token found. Please log in first.</p>';
+                    return;
+                }
+
+                console.log('Sending request with token:', token);
+
+                const response = await fetch('/api/vendors', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p style="color: green;">✅ Success! Vendor created:</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p style="color: red;">❌ Error (${response.status}):</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = `
+                    <p style="color: red;">❌ Network Error:</p>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
