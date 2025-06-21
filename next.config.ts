@@ -7,14 +7,11 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  // Configure webpack to handle potential file system issues
-  webpack: (config, { dev }) => {
-    if (dev) {
-      // Disable file system caching in development to avoid permission issues
-      config.cache = false;
-    }
-    return config;
-  },
+  // Only add production optimizations when building for production
+  ...(process.env.NODE_ENV === 'production' && {
+    serverExternalPackages: ['@prisma/client', 'prisma'],
+    output: 'standalone',
+  }),
 };
 
 export default nextConfig;

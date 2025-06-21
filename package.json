@@ -4,16 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:with-prisma": "npx prisma generate && next build",
+    "build": "npx prisma generate && next build",
+    "build:vercel": "npx prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --fix",
+    "lint:check": "next lint",
+    "type-check": "tsc --noEmit",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:clear": "npx tsx scripts/clear-demo-data.ts",
     "db:studio": "npx prisma studio",
-    "postinstall": "npx prisma generate"
+    "postinstall": "npx prisma generate",
+    "vercel-build": "npx prisma generate && npx next build --no-lint"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
