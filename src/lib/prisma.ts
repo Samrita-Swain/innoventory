@@ -5,12 +5,23 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Get DATABASE_URL with fallback for build time
+const getDatabaseUrl = () => {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL
+  }
+
+  // Fallback for build time when DATABASE_URL is not available
+  // This won't be used at runtime, only during build
+  return 'postgresql://build:build@localhost:5432/build'
+}
+
 // Create a single instance of Prisma client with Vercel-optimized configuration
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL,
+      url: getDatabaseUrl(),
     },
   },
 })
