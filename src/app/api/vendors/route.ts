@@ -57,17 +57,32 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const vendors = await prisma.vendor.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { orders: true }
-        }
-      }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    return NextResponse.json(vendors)
+    if (!dbConnected) {
+      // Return empty array when database is not available
+      console.log('Database not connected, returning empty vendors array')
+      return NextResponse.json([])
+    }
+
+    try {
+      const vendors = await prisma.vendor.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { orders: true }
+          }
+        }
+      })
+
+      return NextResponse.json(vendors)
+    } catch (dbError) {
+      console.error('Database query failed in vendors GET:', dbError)
+      // Return empty array on database error
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Get vendors error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -150,15 +165,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check if email already exists
-    const existingVendor = await prisma.vendor.findUnique({
-      where: { email }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    if (existingVendor) {
+    if (!dbConnected) {
       return NextResponse.json({
-        error: 'Vendor with this email already exists'
-      }, { status: 409 })
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
+    try {
+      // Check if email already exists
+      const existingVendor = await prisma.vendor.findUnique({
+        where: { email }
+      })
+
+      if (existingVendor) {
+        return NextResponse.json({
+          error: 'Vendor with this email already exists'
+        }, { status: 409 })
+      }
+    } catch (dbError) {
+      console.error('Database query failed in vendor email check:', dbError)
+      return NextResponse.json({
+        error: 'Database error. Please try again later.'
+      }, { status: 503 })
     }
 
     // Handle file uploads (placeholder URLs for now)
@@ -179,54 +210,67 @@ export async function POST(request: NextRequest) {
       pointsOfContact: pointsOfContact ? 'has data' : 'null'
     })
 
-    const vendor = await prisma.vendor.create({
-      data: {
-        // Original fields
-        name: vendorName || 'Unknown',
-        email,
-        phone: phone || null,
-        company: companyName || individualName || 'Unknown',
-        country,
-        address: address || null,
-        specialization,
+    try {
+      const vendor = await prisma.vendor.create({
+        data: {
+          // Original fields
+          name: vendorName || 'Unknown',
+          email,
+          phone: phone || null,
+          company: companyName || individualName || 'Unknown',
+          country,
+          address: address || null,
+          specialization,
 
-        // New comprehensive fields
-        onboardingDate: onboardingDate && onboardingDate.trim() ? new Date(onboardingDate) : null,
-        companyType: companyType || null,
-        companyName: companyName || null,
-        individualName: individualName || null,
-        city: city || null,
-        state: state || null,
-        username: username || null,
-        gstNumber: gstNumber || null,
-        startupBenefits: startupBenefits || null,
-        typeOfWork: typeOfWork || [],
-        pointsOfContact: pointsOfContact ? JSON.stringify(pointsOfContact) : null,
+          // New comprehensive fields
+          onboardingDate: onboardingDate && onboardingDate.trim() ? new Date(onboardingDate) : null,
+          companyType: companyType || null,
+          companyName: companyName || null,
+          individualName: individualName || null,
+          city: city || null,
+          state: state || null,
+          username: username || null,
+          gstNumber: gstNumber || null,
+          startupBenefits: startupBenefits || null,
+          typeOfWork: typeOfWork || [],
+          pointsOfContact: pointsOfContact ? JSON.stringify(pointsOfContact) : null,
 
-        // File URLs
-        gstFileUrl,
-        ndaFileUrl,
-        agreementFileUrl,
-        companyLogoUrl,
-        otherDocsUrls: [], // Placeholder for other documents
+          // File URLs
+          gstFileUrl,
+          ndaFileUrl,
+          agreementFileUrl,
+          companyLogoUrl,
+          otherDocsUrls: [], // Placeholder for other documents
 
-        createdById: payload.userId,
-        isActive: true
+          createdById: payload.userId,
+          isActive: true
+        }
+      })
+
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'VENDOR_CREATED',
+            description: `Created new vendor: ${vendorName}`,
+            entityType: 'Vendor',
+            entityId: vendor.id,
+            userId: payload.userId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
       }
-    })
 
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'VENDOR_CREATED',
-        description: `Created new vendor: ${vendorName}`,
-        entityType: 'Vendor',
-        entityId: vendor.id,
-        userId: payload.userId
-      }
-    })
-
-    return NextResponse.json(vendor, { status: 201 })
+      return NextResponse.json(vendor, { status: 201 })
+    } catch (dbError) {
+      console.error('Database error creating vendor:', dbError)
+      return NextResponse.json({
+        error: 'Failed to create vendor. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
+    }
   } catch (error) {
     console.error('Create vendor error:', error)
     return NextResponse.json({

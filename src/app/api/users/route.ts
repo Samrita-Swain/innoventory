@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken, hashPassword } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const payload = verifyToken(token)
-    
+
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
@@ -21,27 +21,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const users = await prisma.user.findMany({
-      where: {
-        role: 'SUB_ADMIN'
-      },
-      include: {
-        permissions: true
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    const formattedUsers = users.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
-      permissions: user.permissions.map(p => p.permission),
-      createdAt: user.createdAt
-    }))
+    if (!dbConnected) {
+      // Return empty array when database is not available
+      console.log('Database not connected, returning empty users array')
+      return NextResponse.json([])
+    }
 
-    return NextResponse.json(formattedUsers)
+    try {
+      const users = await prisma.user.findMany({
+        where: {
+          role: 'SUB_ADMIN'
+        },
+        include: {
+          permissions: true
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      const formattedUsers = users.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        permissions: user.permissions.map(p => p.permission),
+        createdAt: user.createdAt
+      }))
+
+      return NextResponse.json(formattedUsers)
+    } catch (dbError) {
+      console.error('Database query failed in users GET:', dbError)
+      // Return empty array on database error
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Get users error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -110,15 +125,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    if (existingUser) {
-      return NextResponse.json({ 
-        error: 'User with this email already exists' 
-      }, { status: 409 })
+    if (!dbConnected) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
+    try {
+      // Check if email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      })
+
+      if (existingUser) {
+        return NextResponse.json({
+          error: 'User with this email already exists'
+        }, { status: 409 })
+      }
+    } catch (dbError) {
+      console.error('Database query failed in user email check:', dbError)
+      return NextResponse.json({
+        error: 'Database error. Please try again later.'
+      }, { status: 503 })
     }
 
     // Handle file uploads (placeholder URLs for now)
@@ -138,66 +169,84 @@ export async function POST(request: NextRequest) {
       termOfWork
     })
 
-    // Create user with all comprehensive fields
-    const user = await prisma.user.create({
-      data: {
-        // Original fields
-        name,
-        email,
-        password: hashedPassword,
-        role: 'SUB_ADMIN',
-        isActive: true,
-        createdById: payload.userId,
-
-        // New comprehensive fields
-        subAdminOnboardingDate: subAdminOnboardingDate && subAdminOnboardingDate.trim() ? new Date(subAdminOnboardingDate) : null,
-        address: address || null,
-        city: city || null,
-        state: state || null,
-        country: country || null,
-        username: username || null,
-        panNumber: panNumber || null,
-        termOfWork: termOfWork || null,
-
-        // File URLs
-        tdsFileUrl,
-        ndaFileUrl,
-        employmentAgreementUrl,
-        panCardFileUrl,
-        otherDocsUrls: [] // Placeholder for other documents
-      }
-    })
-
-    // Create user permissions
-    const permissionPromises = permissions.map((permission: string) =>
-      prisma.userPermission.create({
+    try {
+      // Create user with all comprehensive fields
+      const user = await prisma.user.create({
         data: {
-          userId: user.id,
-          permission: permission as 'MANAGE_CUSTOMERS' | 'MANAGE_VENDORS' | 'MANAGE_ORDERS' | 'VIEW_ANALYTICS' | 'MANAGE_PAYMENTS' | 'VIEW_REPORTS'
+          // Original fields
+          name,
+          email,
+          password: hashedPassword,
+          role: 'SUB_ADMIN',
+          isActive: true,
+          createdById: payload.userId,
+
+          // New comprehensive fields
+          subAdminOnboardingDate: subAdminOnboardingDate && subAdminOnboardingDate.trim() ? new Date(subAdminOnboardingDate) : null,
+          address: address || null,
+          city: city || null,
+          state: state || null,
+          country: country || null,
+          username: username || null,
+          panNumber: panNumber || null,
+          termOfWork: termOfWork || null,
+
+          // File URLs
+          tdsFileUrl,
+          ndaFileUrl,
+          employmentAgreementUrl,
+          panCardFileUrl,
+          otherDocsUrls: [] // Placeholder for other documents
         }
       })
-    )
 
-    await Promise.all(permissionPromises)
+      // Create user permissions
+      try {
+        const permissionPromises = permissions.map((permission: string) =>
+          prisma.userPermission.create({
+            data: {
+              userId: user.id,
+              permission: permission as 'MANAGE_CUSTOMERS' | 'MANAGE_VENDORS' | 'MANAGE_ORDERS' | 'VIEW_ANALYTICS' | 'MANAGE_PAYMENTS' | 'VIEW_REPORTS'
+            }
+          })
+        )
 
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'USER_CREATED',
-        description: `Created new sub-admin: ${name}`,
-        entityType: 'User',
-        entityId: user.id,
-        userId: payload.userId
+        await Promise.all(permissionPromises)
+      } catch (permError) {
+        console.error('Failed to create user permissions:', permError)
+        // Continue even if permissions fail
       }
-    })
 
-    // Return user without password
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user
-    return NextResponse.json({
-      ...userWithoutPassword,
-      permissions
-    }, { status: 201 })
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'USER_CREATED',
+            description: `Created new sub-admin: ${name}`,
+            entityType: 'User',
+            entityId: user.id,
+            userId: payload.userId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
+      }
+
+      // Return user without password
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...userWithoutPassword } = user
+      return NextResponse.json({
+        ...userWithoutPassword,
+        permissions
+      }, { status: 201 })
+    } catch (dbError) {
+      console.error('Database error creating user:', dbError)
+      return NextResponse.json({
+        error: 'Failed to create user. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
+    }
 
   } catch (error) {
     console.error('Create user error:', error)
