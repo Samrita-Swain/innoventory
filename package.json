@@ -16,7 +16,9 @@
     "db:clear": "npx tsx scripts/clear-demo-data.ts",
     "db:studio": "npx prisma studio",
     "postinstall": "npx prisma generate",
-    "vercel-build": "npx prisma generate && npx next build --no-lint"
+    "vercel-build": "npx prisma generate && npx next build --no-lint",
+    "fix-prisma": "npx prisma generate",
+    "dev:clean": "npm run fix-prisma && npm run dev"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

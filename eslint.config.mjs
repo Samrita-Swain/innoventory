@@ -18,8 +18,8 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": "warn",
       "prefer-const": "warn",
       "react-hooks/exhaustive-deps": "warn",
-      // Allow console logs in development
-      "no-console": process.env.NODE_ENV === "production" ? "error" : "warn",
+      // Allow console logs
+      "no-console": "off",
     },
   },
 ];
