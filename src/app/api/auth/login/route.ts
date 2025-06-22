@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyPassword } from '@/lib/auth'
 
 // Demo users for backward compatibility
@@ -36,13 +36,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Try to find user in database first
-    let user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        permissions: true
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+    let user = null
+
+    if (dbConnected) {
+      // Try to find user in database first
+      try {
+        user = await prisma.user.findUnique({
+          where: { email },
+          include: {
+            permissions: true
+          }
+        })
+      } catch (dbError) {
+        console.error('Database query failed:', dbError)
+        // Continue to demo user fallback
       }
-    })
+    }
 
     if (user && user.isActive) {
       // Database user found - verify password

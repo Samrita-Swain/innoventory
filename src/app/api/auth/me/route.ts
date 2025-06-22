@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 
 // Demo users for backward compatibility
 const demoUsers = [
@@ -46,16 +46,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // Try to find user in database first
-    let user = await prisma.user.findUnique({
-      where: {
-        id: payload.userId,
-        isActive: true
-      },
-      include: {
-        permissions: true
+    // Check if database is available and try to find user
+    const dbConnected = await isDatabaseConnected()
+    let user = null
+
+    if (dbConnected) {
+      try {
+        user = await prisma.user.findUnique({
+          where: {
+            id: payload.userId,
+            isActive: true
+          },
+          include: {
+            permissions: true
+          }
+        })
+      } catch (dbError) {
+        console.error('Database query failed in auth/me:', dbError)
+        // Continue to demo user fallback
       }
-    })
+    }
 
     if (user) {
       // Database user found - use real permissions

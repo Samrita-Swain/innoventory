@@ -16,6 +16,15 @@ const getDatabaseUrl = () => {
   return 'postgresql://build:build@localhost:5432/build'
 }
 
+// Check if we're in a runtime environment where database is required
+const isDatabaseRequired = () => {
+  // During build time, database is not required
+  if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+    return false
+  }
+  return true
+}
+
 // Create a single instance of Prisma client with Vercel-optimized configuration
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -25,6 +34,20 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
     },
   },
 })
+
+// Helper function to check database connectivity
+export const isDatabaseConnected = async (): Promise<boolean> => {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return false
+    }
+    await prisma.$queryRaw`SELECT 1`
+    return true
+  } catch (error) {
+    console.error('Database connection failed:', error)
+    return false
+  }
+}
 
 // In development, store the client on the global object to prevent multiple instances
 if (process.env.NODE_ENV !== 'production') {
