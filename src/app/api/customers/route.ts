@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 
 export async function GET(request: NextRequest) {
@@ -46,17 +46,32 @@ export async function GET(request: NextRequest) {
       whereClause.country = country
     }
 
-    const customers = await prisma.customer.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { orders: true }
-        }
-      }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    return NextResponse.json(customers)
+    if (!dbConnected) {
+      // Return empty array when database is not available
+      console.log('Database not connected, returning empty customers array')
+      return NextResponse.json([])
+    }
+
+    try {
+      const customers = await prisma.customer.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { orders: true }
+          }
+        }
+      })
+
+      return NextResponse.json(customers)
+    } catch (dbError) {
+      console.error('Database query failed in customers GET:', dbError)
+      // Return empty array on database error
+      return NextResponse.json([])
+    }
   } catch (error) {
     console.error('Get customers error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -142,15 +157,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check if email already exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { email }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    if (existingCustomer) {
+    if (!dbConnected) {
       return NextResponse.json({
-        error: 'Customer with this email already exists'
-      }, { status: 409 })
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
+    try {
+      // Check if email already exists
+      const existingCustomer = await prisma.customer.findUnique({
+        where: { email }
+      })
+
+      if (existingCustomer) {
+        return NextResponse.json({
+          error: 'Customer with this email already exists'
+        }, { status: 409 })
+      }
+    } catch (dbError) {
+      console.error('Database query failed in customer email check:', dbError)
+      return NextResponse.json({
+        error: 'Database error. Please try again later.'
+      }, { status: 503 })
     }
 
     // Handle file uploads (placeholder URLs for now)
@@ -174,57 +205,70 @@ export async function POST(request: NextRequest) {
       pointOfContact: pointOfContact ? 'has data' : 'null'
     })
 
-    const customer = await prisma.customer.create({
-      data: {
-        // Original fields
-        name: customerName || 'Unknown',
-        email,
-        phone: phone || null,
-        company: companyField,
-        country,
-        address: address || null,
+    try {
+      const customer = await prisma.customer.create({
+        data: {
+          // Original fields
+          name: customerName || 'Unknown',
+          email,
+          phone: phone || null,
+          company: companyField,
+          country,
+          address: address || null,
 
-        // New comprehensive fields
-        clientOnboardingDate: clientOnboardingDate && clientOnboardingDate.trim() ? new Date(clientOnboardingDate) : null,
-        companyType: companyType || null,
-        companyName: companyName || null,
-        individualName: individualName || null,
-        city: city || null,
-        state: state || null,
-        username: username || null,
-        gstNumber: gstNumber || null,
-        dpiitRegister: dpiitRegister || null,
-        dpiitValidTill: dpiitValidTill && dpiitValidTill.trim() ? new Date(dpiitValidTill) : null,
-        pointOfContact: pointOfContact ? JSON.stringify(pointOfContact) : null,
+          // New comprehensive fields
+          clientOnboardingDate: clientOnboardingDate && clientOnboardingDate.trim() ? new Date(clientOnboardingDate) : null,
+          companyType: companyType || null,
+          companyName: companyName || null,
+          individualName: individualName || null,
+          city: city || null,
+          state: state || null,
+          username: username || null,
+          gstNumber: gstNumber || null,
+          dpiitRegister: dpiitRegister || null,
+          dpiitValidTill: dpiitValidTill && dpiitValidTill.trim() ? new Date(dpiitValidTill) : null,
+          pointOfContact: pointOfContact ? JSON.stringify(pointOfContact) : null,
 
-        // File URLs
-        dpiitCertificateUrl,
-        tdsFileUrl,
-        gstFileUrl,
-        ndaFileUrl,
-        agreementFileUrl,
-        quotationFileUrl,
-        panCardFileUrl,
-        udhyamRegistrationUrl,
-        otherDocsUrls: [], // Placeholder for other documents
+          // File URLs
+          dpiitCertificateUrl,
+          tdsFileUrl,
+          gstFileUrl,
+          ndaFileUrl,
+          agreementFileUrl,
+          quotationFileUrl,
+          panCardFileUrl,
+          udhyamRegistrationUrl,
+          otherDocsUrls: [], // Placeholder for other documents
 
-        createdById: payload.userId,
-        isActive: true
+          createdById: payload.userId,
+          isActive: true
+        }
+      })
+
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'CUSTOMER_CREATED',
+            description: `Created new customer: ${customerName}`,
+            entityType: 'Customer',
+            entityId: customer.id,
+            userId: payload.userId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
       }
-    })
 
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'CUSTOMER_CREATED',
-        description: `Created new customer: ${customerName}`,
-        entityType: 'Customer',
-        entityId: customer.id,
-        userId: payload.userId
-      }
-    })
-
-    return NextResponse.json(customer, { status: 201 })
+      return NextResponse.json(customer, { status: 201 })
+    } catch (dbError) {
+      console.error('Database error creating customer:', dbError)
+      return NextResponse.json({
+        error: 'Failed to create customer. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
+    }
   } catch (error) {
     console.error('Create customer error:', error)
     return NextResponse.json({

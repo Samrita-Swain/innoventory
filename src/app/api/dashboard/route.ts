@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 
 export async function GET(request: NextRequest) {
@@ -44,6 +44,36 @@ export async function GET(request: NextRequest) {
     }
 
     const startDate = getDateRange()
+
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected) {
+      // Return empty dashboard data when database is not available
+      console.log('Database not connected, returning empty dashboard data')
+      const emptyDashboardData = {
+        totalCustomers: 0,
+        totalVendors: 0,
+        totalIPsRegistered: 0,
+        totalIPsClosed: 0,
+        customersByCountry: [],
+        vendorsByCountry: [],
+        workDistribution: [],
+        pendingWork: [],
+        pendingPayments: [],
+        yearlyTrends: [],
+        assignedCustomers: 0,
+        assignedVendors: 0,
+        totalOrders: 0,
+        ordersYetToStart: 0,
+        ordersPendingWithClient: 0,
+        ordersCompleted: 0,
+        assignedPendingOrders: [],
+        recentActivities: [],
+        monthlyProgress: []
+      }
+      return NextResponse.json(emptyDashboardData)
+    }
 
     if (payload.role === 'ADMIN') {
       // Admin dashboard data

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const payload = verifyToken(token)
-    
+
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }

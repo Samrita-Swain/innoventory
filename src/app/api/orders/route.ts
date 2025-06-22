@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const payload = verifyToken(token)
-    
+
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const payload = verifyToken(token)
-    
+
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
@@ -75,23 +75,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { 
-      title, 
-      description, 
-      type, 
-      customerId, 
-      vendorId, 
+    const {
+      title,
+      description,
+      type,
+      customerId,
+      vendorId,
       assignedToId,
-      country, 
-      priority, 
-      amount, 
-      dueDate 
+      country,
+      priority,
+      amount,
+      dueDate
     } = body
 
     // Validate required fields
     if (!title || !type || !customerId || !vendorId || !country || !priority || !amount) {
-      return NextResponse.json({ 
-        error: 'Missing required fields' 
+      return NextResponse.json({
+        error: 'Missing required fields'
       }, { status: 400 })
     }
 
