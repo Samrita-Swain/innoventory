@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { Users, Plus, Search, Edit, Trash2, Eye, X } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
@@ -48,6 +49,7 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
@@ -66,7 +68,8 @@ export default function CustomersPage() {
 
       const token = localStorage.getItem('token')
       if (!token) {
-        setError('No authentication token found')
+        // No token found, redirect to login
+        router.push('/login')
         return
       }
 
@@ -79,6 +82,14 @@ export default function CustomersPage() {
           'Authorization': `Bearer ${token}`
         }
       })
+
+      if (response.status === 401) {
+        // Unauthorized, token might be expired
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        router.push('/login')
+        return
+      }
 
       if (response.ok) {
         const data = await response.json()
@@ -93,7 +104,7 @@ export default function CustomersPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [searchTerm, filterCountry])
+  }, [searchTerm, filterCountry, router])
 
   useEffect(() => {
     // Get user role from token

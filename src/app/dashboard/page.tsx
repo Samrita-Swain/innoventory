@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import AdminDashboard from '@/components/dashboard/AdminDashboard'
 import SubAdminDashboard from '@/components/dashboard/SubAdminDashboard'
@@ -162,26 +163,53 @@ export default function DashboardPage() {
   const [userPermissions, setUserPermissions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     setIsClient(true)
 
-    // Get user role from localStorage
-    if (typeof window !== 'undefined') {
-      const storedRole = localStorage.getItem('demoRole') as 'ADMIN' | 'SUB_ADMIN'
-      const storedPermissions = localStorage.getItem('demoPermissions')
-      
-      if (storedRole) {
-        setUserRole(storedRole)
-        setUserPermissions(storedPermissions ? JSON.parse(storedPermissions) : [])
+    const checkAuth = async () => {
+      try {
+        // First check if we have a JWT token
+        const token = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+
+        if (token && storedUser) {
+          // We have JWT authentication, use it
+          try {
+            const userData = JSON.parse(storedUser)
+            setUserRole(userData.role)
+            setUserPermissions(userData.permissions)
+            setIsLoading(false)
+            return
+          } catch (parseError) {
+            console.error('Failed to parse stored user data:', parseError)
+            // Fall through to demo authentication
+          }
+        }
+
+        // Fallback to demo authentication for development
+        const storedRole = localStorage.getItem('demoRole') as 'ADMIN' | 'SUB_ADMIN'
+        const storedPermissions = localStorage.getItem('demoPermissions')
+
+        if (storedRole) {
+          setUserRole(storedRole)
+          setUserPermissions(storedPermissions ? JSON.parse(storedPermissions) : [])
+        } else {
+          // No authentication found, redirect to login
+          router.push('/login')
+          return
+        }
+
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        setIsLoading(false)
       }
     }
 
-    // Simulate loading
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-  }, [])
+    checkAuth()
+  }, [router])
 
   if (!isClient || isLoading) {
     return (

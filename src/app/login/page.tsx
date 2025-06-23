@@ -42,6 +42,10 @@ export default function LoginPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
+
+        // Also store demo data for backward compatibility
+        localStorage.setItem('demoRole', data.user.role)
+        localStorage.setItem('demoPermissions', JSON.stringify(data.user.permissions))
       }
 
       // Redirect to dashboard
