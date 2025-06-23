@@ -480,21 +480,21 @@ export default function VendorsPage() {
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleViewVendor(vendor)}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors cursor-pointer"
                               title="View Vendor"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleEditVendor(vendor)}
-                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors cursor-pointer"
                               title="Edit Vendor"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteVendor(vendor)}
-                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
                               title="Delete Vendor"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -532,12 +532,12 @@ export default function VendorsPage() {
 
         {/* View Vendor Modal */}
         {showViewModal && selectedVendor && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-white z-50">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="bg-white w-full h-full overflow-y-auto"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">

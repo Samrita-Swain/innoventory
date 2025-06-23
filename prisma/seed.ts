@@ -317,6 +317,62 @@ async function main() {
     })
   }
 
+  // Create type of work items
+  const typeOfWorkItems = [
+    {
+      name: 'Patents',
+      description: 'Patent registration and filing services',
+      isActive: true,
+      createdById: admin.id,
+    },
+    {
+      name: 'Trademarks',
+      description: 'Trademark registration and protection',
+      isActive: true,
+      createdById: admin.id,
+    },
+    {
+      name: 'Copyrights',
+      description: 'Copyright registration and enforcement',
+      isActive: true,
+      createdById: admin.id,
+    },
+    {
+      name: 'Designs',
+      description: 'Design registration and protection',
+      isActive: true,
+      createdById: admin.id,
+    },
+    {
+      name: 'Consultancy',
+      description: 'IP consultation and advisory services',
+      isActive: true,
+      createdById: admin.id,
+    },
+    {
+      name: 'Audit Service',
+      description: 'IP audit and compliance services',
+      isActive: true,
+      createdById: admin.id,
+    },
+    {
+      name: 'Agreement Drafting',
+      description: 'Legal agreement drafting and review',
+      isActive: true,
+      createdById: admin.id,
+    },
+  ]
+
+  const createdTypeOfWork = []
+  for (const typeOfWork of typeOfWorkItems) {
+    const created = await prisma.typeOfWork.upsert({
+      where: { name: typeOfWork.name },
+      update: {},
+      create: typeOfWork,
+    })
+    createdTypeOfWork.push(created)
+  }
+
   console.log('✅ Database seeded successfully!')
   console.log(`👤 Admin user: admin@innoventory.com / admin123`)
   console.log(`👤 Sub-admin user: subadmin@innoventory.com / subadmin123`)
@@ -324,6 +380,7 @@ async function main() {
   console.log(`🏢 Created ${createdVendors.length} vendors`)
   console.log(`📋 Created ${createdOrders.length} orders`)
   console.log(`💰 Created ${invoices.length} invoices`)
+  console.log(`💼 Created ${createdTypeOfWork.length} type of work items`)
 }
 
 main()

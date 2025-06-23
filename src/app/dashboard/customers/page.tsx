@@ -3,12 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { Users, Plus, Search, Edit, Trash2, Eye, X } from 'lucide-react'
+import { Users, Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
 import FloatingParticles from '@/components/animations/FloatingParticles'
 import AddCustomerForm from '@/components/forms/AddCustomerForm'
-import EditCustomerForm from '@/components/forms/EditCustomerForm'
 
 // Customer interface
 interface Customer {
@@ -57,9 +56,7 @@ export default function CustomersPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [showViewModal, setShowViewModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
+
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -163,14 +160,11 @@ export default function CustomersPage() {
     fetchCustomers()
   }
 
-  const handleViewCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer)
-    setShowViewModal(true)
-  }
+
 
   const handleEditCustomer = async (customer: Customer) => {
     try {
-      // Verify customer still exists before opening edit modal
+      // Verify customer still exists before navigating to edit page
       const token = localStorage.getItem('token')
       if (!token) {
         setError('Please login again')
@@ -184,9 +178,8 @@ export default function CustomersPage() {
       })
 
       if (response.ok) {
-        const currentCustomer = await response.json()
-        setSelectedCustomer(currentCustomer)
-        setShowEditModal(true)
+        // Navigate to dedicated edit page
+        router.push(`/dashboard/customers/${customer.id}/edit`)
       } else if (response.status === 404) {
         alert('Customer not found. It may have been deleted. Refreshing the list...')
         fetchCustomers() // Refresh the list
@@ -251,7 +244,7 @@ export default function CustomersPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setShowAddForm(true)}
+            onClick={() => router.push('/dashboard/customers/new')}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
           >
             <Plus className="h-5 w-5" />
@@ -466,22 +459,22 @@ export default function CustomersPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleViewCustomer(customer)}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                              onClick={() => router.push(`/dashboard/customers/${customer.id}/view`)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors cursor-pointer"
                               title="View Customer"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleEditCustomer(customer)}
-                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors cursor-pointer"
                               title="Edit Customer"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteCustomer(customer)}
-                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
                               title="Delete Customer"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -504,188 +497,9 @@ export default function CustomersPage() {
           onSuccess={handleAddCustomerSuccess}
         />
 
-        {/* View Customer Modal */}
-        {showViewModal && selectedCustomer && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                    <Eye className="mr-3 h-6 w-6 text-blue-600" />
-                    Customer Details
-                  </h2>
-                  <button
-                    onClick={() => setShowViewModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
 
-                <div className="space-y-8">
-                  {/* Basic Information */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Basic Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.name}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.email}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.phone || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.username || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                          selectedCustomer.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {selectedCustomer.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Client Onboarding Date</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                          {selectedCustomer.clientOnboardingDate
-                            ? new Date(selectedCustomer.clientOnboardingDate).toLocaleDateString()
-                            : 'N/A'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Company Information */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Company Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Type</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.companyType || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.companyName || selectedCustomer.company || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Individual Name</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.individualName || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.gstNumber || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">DPIIT Register</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.dpiitRegister || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">DPIIT Valid Till</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                          {selectedCustomer.dpiitValidTill
-                            ? new Date(selectedCustomer.dpiitValidTill).toLocaleDateString()
-                            : 'N/A'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Location Information */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Location Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.country}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.state || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.city || 'N/A'}</p>
-                      </div>
-                      {selectedCustomer.address && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                          <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer.address}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Point of Contact */}
-                  {selectedCustomer.pointOfContact && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Point of Contact</h3>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <pre className="text-sm text-gray-900 whitespace-pre-wrap">
-                          {JSON.stringify(JSON.parse(selectedCustomer.pointOfContact), null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* System Information */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">System Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Total Orders</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedCustomer._count?.orders || 0}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                        <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                          {new Date(selectedCustomer.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-6 pt-6 border-t border-gray-200">
-                  <button
-                    onClick={() => setShowViewModal(false)}
-                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Edit Customer Modal */}
-        {showEditModal && selectedCustomer && (
-          <EditCustomerForm
-            isOpen={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            customer={selectedCustomer}
-            onSuccess={() => {
-              setShowEditModal(false)
-              fetchCustomers()
-            }}
-          />
-        )}
 
       </PageTransition>
     </DashboardLayout>

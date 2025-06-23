@@ -12,7 +12,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Briefcase
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -82,6 +83,12 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
       name: 'Vendors',
       href: '/dashboard/vendors',
       icon: Building2,
+      permission: 'MANAGE_VENDORS'
+    },
+    {
+      name: 'Type Of Work',
+      href: '/dashboard/type-of-work',
+      icon: Briefcase,
       permission: 'MANAGE_VENDORS'
     },
     {

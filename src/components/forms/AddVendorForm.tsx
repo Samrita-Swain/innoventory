@@ -314,29 +314,29 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-white z-[9999]">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        className="form-container bg-white rounded-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="form-container bg-white w-full h-full overflow-y-auto overflow-x-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white rounded-t-xl">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-            <Building2 className="mr-3 h-6 w-6 text-green-600" />
-            Add New Vendor
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-white sticky top-0 z-10 shadow-sm max-w-full">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center flex-1 min-w-0">
+            <Building2 className="mr-2 md:mr-3 h-5 w-5 md:h-6 md:w-6 text-green-600 flex-shrink-0" />
+            <span className="truncate">Add New Vendor</span>
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-8 bg-white rounded-b-xl">
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 lg:p-8 space-y-6 bg-white min-h-screen max-w-full">
           {errors.submit && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
               {errors.submit}
@@ -349,9 +349,9 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               Basic Information
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Onboarding Date */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="inline h-4 w-4 mr-1" />
                   Vendor Onboarding Date
@@ -369,7 +369,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* Company Type */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Building className="inline h-4 w-4 mr-1" />
                   Company Type
@@ -391,7 +391,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* Username */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <User className="inline h-4 w-4 mr-1" />
                   Username
@@ -410,10 +410,10 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* Company Name / Individual Name */}
               {formData.companyType === 'Individual' ? (
-                <div>
+                <div className="min-w-0">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <User className="inline h-4 w-4 mr-1" />
                     Individual Name *
@@ -431,7 +431,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
                   {errors.individualName && <p className="text-red-500 text-sm mt-1">{errors.individualName}</p>}
                 </div>
               ) : (
-                <div>
+                <div className="min-w-0">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Building className="inline h-4 w-4 mr-1" />
                     Company Name *
@@ -451,7 +451,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               )}
 
               {/* Email */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Mail className="inline h-4 w-4 mr-1" />
                   Email Address *
@@ -470,7 +470,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* Phone */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Phone className="inline h-4 w-4 mr-1" />
                   Phone Number
@@ -489,7 +489,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* GST Number */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <FileText className="inline h-4 w-4 mr-1" />
                   GST Number
@@ -525,9 +525,9 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
             </div>
 
             {/* Location Details - Cascading Dropdowns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Country - First */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Globe className="inline h-4 w-4 mr-1" />
                   Country *
@@ -549,7 +549,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* State - Second */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="inline h-4 w-4 mr-1" />
                   State
@@ -574,7 +574,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* City - Third */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="inline h-4 w-4 mr-1" />
                   City
@@ -633,7 +633,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Contact Name */}
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Name *
                       </label>
@@ -647,7 +647,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
                     </div>
 
                     {/* Contact Email */}
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Email *
                       </label>
@@ -661,19 +661,19 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
                     </div>
 
                     {/* Contact Phone */}
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Phone Number *
                       </label>
-                      <div className="flex">
+                      <div className="flex min-w-0">
                         <select
                           value={contact.countryCode}
                           onChange={(e) => updatePointOfContact(contact.id, 'countryCode', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors bg-gray-50"
+                          className="px-2 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors bg-gray-50 flex-shrink-0"
                         >
                           {countryCodes.map(cc => (
                             <option key={cc.code} value={cc.code}>
-                              {cc.code} ({cc.country})
+                              {cc.code}
                             </option>
                           ))}
                         </select>
@@ -681,14 +681,14 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
                           type="tel"
                           value={contact.phone}
                           onChange={(e) => updatePointOfContact(contact.id, 'phone', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                          className="flex-1 min-w-0 px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                           placeholder="Enter phone number"
                         />
                       </div>
                     </div>
 
                     {/* Area of Expertise */}
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Area of Expertise *
                       </label>
@@ -724,20 +724,20 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Select types of work (multiple selection allowed)
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {workTypes.map(workType => (
                   <motion.label
                     key={workType}
-                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors border border-gray-200 bg-white shadow-sm"
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors border border-gray-200 bg-white shadow-sm min-w-0"
                     whileHover={{ scale: 1.02 }}
                   >
                     <input
                       type="checkbox"
                       checked={formData.typeOfWork.includes(workType)}
                       onChange={() => handleWorkTypeChange(workType)}
-                      className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded flex-shrink-0"
                     />
-                    <span className="text-sm font-medium text-gray-900">{workType}</span>
+                    <span className="text-sm font-medium text-gray-900 truncate">{workType}</span>
                   </motion.label>
                 ))}
               </div>
@@ -745,8 +745,8 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
             {errors.typeOfWork && <p className="text-red-500 text-sm mt-1">{errors.typeOfWork}</p>}
 
             {/* Startup Benefits */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Award className="inline h-4 w-4 mr-1" />
                   Startup Benefits
@@ -771,9 +771,9 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               Document Uploads
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* GST File */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Upload className="inline h-4 w-4 mr-1" />
                   GST File
@@ -788,7 +788,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* NDA */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <FileText className="inline h-4 w-4 mr-1" />
                   NDA Document
@@ -803,7 +803,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* Agreement */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <FileText className="inline h-4 w-4 mr-1" />
                   Agreement Document
@@ -818,7 +818,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               </div>
 
               {/* Company Logo */}
-              <div>
+              <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Upload className="inline h-4 w-4 mr-1" />
                   Company Logo
@@ -854,7 +854,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
           </div>
 
           {/* Actions */}
-          <div className="flex space-x-3 pt-6 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 pt-6 border-t border-gray-200">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

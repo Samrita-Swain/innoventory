@@ -36,13 +36,14 @@ model User {
   panCardFileUrl         String?
   otherDocsUrls          String[] // Array of document URLs
 
-  activities   ActivityLog[]
-  customers    Customer[]
-  orders       Order[]
-  permissions  UserPermission[]
-  createdBy    User?            @relation("UserCreatedBy", fields: [createdById], references: [id])
-  createdUsers User[]           @relation("UserCreatedBy")
-  vendors      Vendor[]
+  activities      ActivityLog[]
+  customers       Customer[]
+  orders          Order[]
+  permissions     UserPermission[]
+  createdBy       User?            @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers    User[]           @relation("UserCreatedBy")
+  vendors         Vendor[]
+  typeOfWorkItems TypeOfWork[]     @relation("TypeOfWorkCreatedBy")
 
   @@map("users")
 }
@@ -181,6 +182,19 @@ model Invoice {
   order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("invoices")
+}
+
+model TypeOfWork {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+  createdBy   User     @relation("TypeOfWorkCreatedBy", fields: [createdById], references: [id])
+
+  @@map("type_of_work")
 }
 
 model ActivityLog {

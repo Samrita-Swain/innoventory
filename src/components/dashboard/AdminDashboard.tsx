@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Building2, FileCheck, FileX } from 'lucide-react'
+import { Users, Building2, FileText, ShoppingCart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import KPICard from './KPICard'
@@ -39,6 +39,7 @@ interface AdminDashboardProps {
     totalVendors: number
     totalIPsRegistered: number
     totalIPsClosed: number
+    totalOrders?: number // Add totalOrders field
     customersByCountry: { country: string; count: number; coordinates: [number, number] }[]
     vendorsByCountry: { country: string; count: number; coordinates: [number, number] }[]
     workDistribution: { country: string; workCount: number; coordinates: [number, number] }[]
@@ -71,20 +72,20 @@ const AdminDashboard = ({ dashboardData }: AdminDashboardProps) => {
       subtitle: 'Active vendors'
     },
     {
-      title: 'IPs Registered',
-      value: dashboardData.totalIPsRegistered,
-      icon: FileCheck,
+      title: 'Total Clients',
+      value: dashboardData.totalCustomers,
+      icon: FileText,
       color: 'bg-purple-500',
-      onClick: () => router.push('/dashboard/orders?status=registered'),
-      subtitle: 'Successfully registered'
+      onClick: () => router.push('/dashboard/customers'),
+      subtitle: 'All registered clients'
     },
     {
-      title: 'IPs Closed',
-      value: dashboardData.totalIPsClosed,
-      icon: FileX,
+      title: 'Total Orders',
+      value: dashboardData.totalOrders || (dashboardData.totalIPsRegistered + dashboardData.totalIPsClosed),
+      icon: ShoppingCart,
       color: 'bg-orange-500',
-      onClick: () => router.push('/dashboard/orders?status=closed'),
-      subtitle: 'Completed & closed'
+      onClick: () => router.push('/dashboard/orders'),
+      subtitle: 'All orders placed'
     }
   ]
 
@@ -162,7 +163,7 @@ const AdminDashboard = ({ dashboardData }: AdminDashboardProps) => {
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-gray-600 mt-1">Overview of your IP management system</p>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <select
             value={selectedTimeframe}
@@ -200,7 +201,7 @@ const AdminDashboard = ({ dashboardData }: AdminDashboardProps) => {
           onSegmentClick={handleChartSegmentClick}
           height={350}
         />
-        
+
         <InteractiveChart
           type="doughnut"
           data={countryDistributionData}
@@ -224,7 +225,7 @@ const AdminDashboard = ({ dashboardData }: AdminDashboardProps) => {
           onItemClick={handlePendingWorkClick}
           onViewAll={() => router.push('/dashboard/orders?status=pending')}
         />
-        
+
         <PendingPaymentsWidget
           data={dashboardData.pendingPayments}
           onItemClick={handlePendingPaymentClick}
