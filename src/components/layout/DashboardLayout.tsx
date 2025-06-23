@@ -121,15 +121,15 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl border-r border-gray-200 transform opacity-0 ${
+        className={`sticky top-0 left-0 z-50 w-64 h-screen bg-white shadow-xl border-r border-gray-200 transform opacity-0 flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+        } transition-transform duration-300 ease-in-out lg:translate-x-0`}
       >
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 flex-shrink-0 sticky top-0 bg-white z-10">
           <h1 className="text-xl font-bold text-gray-800 tracking-tight">Innoventory</h1>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -139,19 +139,20 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
           </button>
         </div>
 
-        <nav ref={menuItemsRef} className="mt-6 px-3">
-          {filteredMenuItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm'
-                }`}
-              >
+        <nav ref={menuItemsRef} className="mt-6 px-3 flex-1 overflow-y-auto min-h-0">
+          <div className="space-y-1">
+            {filteredMenuItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative block sticky top-0 ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700 shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm'
+                  }`}
+                >
                 <div className={`flex items-center justify-center w-8 h-8 rounded-lg mr-3 transition-colors ${
                   isActive
                     ? 'bg-blue-100 text-blue-700'
@@ -160,15 +161,16 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
                   <item.icon className="h-5 w-5" />
                 </div>
                 <span className="font-medium">{item.name}</span>
-              </Link>
-            )
-          })}
+                </Link>
+              )
+            })}
+          </div>
         </nav>
 
-        <div className="absolute bottom-0 w-full p-6">
+        <div className="mt-auto p-6 flex-shrink-0 sticky bottom-0">
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-3 py-3 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all duration-200 group"
+            className="flex items-center w-full px-3 py-3 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all duration-200 group relative sticky bottom-0"
           >
             <div className="flex items-center justify-center w-8 h-8 rounded-lg mr-3 bg-gray-100 text-gray-500 group-hover:bg-red-100 group-hover:text-red-700 transition-colors">
               <LogOut className="h-5 w-5" />
@@ -179,9 +181,9 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+      <div className="flex-1 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b">
+        <header className="bg-white shadow-sm border-b sticky top-0 z-40">
           <div className="flex items-center justify-between h-16 px-6">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -199,7 +201,7 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
+        <main className="flex-1 bg-gray-50">
           <div className="container mx-auto px-6 py-8">
             {children}
           </div>
