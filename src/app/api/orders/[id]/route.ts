@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function PUT(
@@ -27,6 +27,32 @@ export async function PUT(
     const { id: orderId } = await params
     const body = await request.json()
 
+    // Validate enum values if they exist in the request
+    const validTypes = ['PATENT', 'TRADEMARK', 'COPYRIGHT', 'DESIGN']
+    const validStatuses = ['YET_TO_START', 'IN_PROGRESS', 'PENDING_WITH_CLIENT', 'PENDING_PAYMENT', 'COMPLETED', 'CLOSED', 'CANCELLED']
+    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+
+    if (body.type && !validTypes.includes(body.type)) {
+      return NextResponse.json({ error: `Invalid type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 })
+    }
+
+    if (body.status && !validStatuses.includes(body.status)) {
+      return NextResponse.json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` }, { status: 400 })
+    }
+
+    if (body.priority && !validPriorities.includes(body.priority)) {
+      return NextResponse.json({ error: `Invalid priority. Must be one of: ${validPriorities.join(', ')}` }, { status: 400 })
+    }
+
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
     // Check if this is a status-only update or full order update
     if (body.status && Object.keys(body).length === 1) {
       // Status-only update (existing functionality)
@@ -51,101 +77,127 @@ export async function PUT(
       }
 
       // Check if order exists
-      const existingOrder = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-          customer: { select: { name: true, company: true } },
-          vendor: { select: { name: true, company: true } },
-          assignedTo: { select: { name: true } }
-        }
-      })
+      try {
+        const existingOrder = await prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            customer: { select: { name: true, company: true } },
+            vendor: { select: { name: true, company: true } },
+            assignedTo: { select: { name: true } }
+          }
+        })
 
-      if (!existingOrder) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+        if (!existingOrder) {
+          return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+        }
+
+        // Update order status
+        const updatedOrder = await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: status as 'YET_TO_START' | 'IN_PROGRESS' | 'PENDING_WITH_CLIENT' | 'PENDING_PAYMENT' | 'COMPLETED' | 'CLOSED' | 'CANCELLED',
+            // Set completion date if status is COMPLETED
+            completedDate: status === 'COMPLETED' ? new Date() : existingOrder.completedDate
+          },
+          include: {
+            customer: { select: { name: true, company: true } },
+            vendor: { select: { name: true, company: true } },
+            assignedTo: { select: { name: true } }
+          }
+        })
+
+        // Log activity
+        try {
+          await prisma.activityLog.create({
+            data: {
+              action: 'ORDER_STATUS_UPDATED',
+              description: `Order status changed from ${existingOrder.status} to ${status}`,
+              entityType: 'Order',
+              entityId: orderId,
+              userId: payload.userId,
+              orderId: orderId
+            }
+          })
+        } catch (logError) {
+          console.error('Failed to log activity:', logError)
+          // Continue even if logging fails
+        }
+
+        return NextResponse.json(updatedOrder)
+      } catch (dbError) {
+        console.error('Database error in status update:', dbError)
+        return NextResponse.json({
+          error: 'Failed to update order status. Please try again later.',
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        }, { status: 503 })
       }
-
-      // Update order status
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          status: status as 'YET_TO_START' | 'IN_PROGRESS' | 'PENDING_WITH_CLIENT' | 'PENDING_PAYMENT' | 'COMPLETED' | 'CLOSED' | 'CANCELLED',
-          // Set completion date if status is COMPLETED
-          completedDate: status === 'COMPLETED' ? new Date() : existingOrder.completedDate
-        },
-        include: {
-          customer: { select: { name: true, company: true } },
-          vendor: { select: { name: true, company: true } },
-          assignedTo: { select: { name: true } }
-        }
-      })
-
-      // Log activity
-      await prisma.activityLog.create({
-        data: {
-          action: 'ORDER_STATUS_UPDATED',
-          description: `Order status changed from ${existingOrder.status} to ${status}`,
-          entityType: 'Order',
-          entityId: orderId,
-          userId: payload.userId,
-          orderId: orderId
-        }
-      })
-
-      return NextResponse.json(updatedOrder)
     } else {
       // Full order update (new functionality for edit page)
       const { title, description, type, status, priority, country, amount, paidAmount, dueDate } = body
 
       // Check if order exists
-      const existingOrder = await prisma.order.findUnique({
-        where: { id: orderId }
-      })
+      try {
+        const existingOrder = await prisma.order.findUnique({
+          where: { id: orderId }
+        })
 
-      if (!existingOrder) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-      }
-
-      // Prepare update data
-      const updateData: any = {}
-      if (title !== undefined) updateData.title = title
-      if (description !== undefined) updateData.description = description
-      if (type !== undefined) updateData.type = type
-      if (status !== undefined) updateData.status = status
-      if (priority !== undefined) updateData.priority = priority
-      if (country !== undefined) updateData.country = country
-      if (amount !== undefined) updateData.amount = parseFloat(amount)
-      if (paidAmount !== undefined) updateData.paidAmount = parseFloat(paidAmount)
-      if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
-
-      // Set completion date if status is COMPLETED
-      if (status === 'COMPLETED' && existingOrder.status !== 'COMPLETED') {
-        updateData.completedDate = new Date()
-      }
-
-      // Update order
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: updateData,
-        include: {
-          customer: { select: { name: true, company: true } },
-          vendor: { select: { name: true, company: true } },
-          assignedTo: { select: { name: true } }
+        if (!existingOrder) {
+          return NextResponse.json({ error: 'Order not found' }, { status: 404 })
         }
-      })
 
-      // Log activity
-      await prisma.activityLog.create({
-        data: {
-          action: 'ORDER_UPDATED',
-          description: `Order ${existingOrder.referenceNumber} was updated`,
-          entityType: 'Order',
-          entityId: orderId,
-          userId: payload.userId,
-          orderId: orderId
+        // Prepare update data
+        const updateData: any = {}
+        if (title !== undefined) updateData.title = title
+        if (description !== undefined) updateData.description = description
+        if (type !== undefined) updateData.type = type
+        if (status !== undefined) updateData.status = status
+        if (priority !== undefined) updateData.priority = priority
+        if (country !== undefined) updateData.country = country
+        if (amount !== undefined) updateData.amount = parseFloat(amount)
+        if (paidAmount !== undefined) updateData.paidAmount = parseFloat(paidAmount)
+        if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
+
+        // Set completion date if status is COMPLETED
+        if (status === 'COMPLETED' && existingOrder.status !== 'COMPLETED') {
+          updateData.completedDate = new Date()
         }
-      })
 
-      return NextResponse.json(updatedOrder)
+        // Update order
+        const updatedOrder = await prisma.order.update({
+          where: { id: orderId },
+          data: updateData,
+          include: {
+            customer: { select: { name: true, company: true } },
+            vendor: { select: { name: true, company: true } },
+            assignedTo: { select: { name: true } }
+          }
+        })
+
+        // Log activity
+        try {
+          await prisma.activityLog.create({
+            data: {
+              action: 'ORDER_UPDATED',
+              description: `Order ${existingOrder.referenceNumber} was updated`,
+              entityType: 'Order',
+              entityId: orderId,
+              userId: payload.userId,
+              orderId: orderId
+            }
+          })
+        } catch (logError) {
+          console.error('Failed to log activity:', logError)
+          // Continue even if logging fails
+        }
+
+        return NextResponse.json(updatedOrder)
+      } catch (dbError) {
+        console.error('Database error in full order update:', dbError)
+        return NextResponse.json({
+          error: 'Failed to update order. Please try again later.',
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        }, { status: 503 })
+      }
     }
 
   } catch (error) {
@@ -175,6 +227,15 @@ export async function GET(
     }
 
     const { id: orderId } = await params
+
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -229,6 +290,15 @@ export async function DELETE(
     }
 
     const { id: orderId } = await params
+
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
 
     // Check if order exists
     const existingOrder = await prisma.order.findUnique({

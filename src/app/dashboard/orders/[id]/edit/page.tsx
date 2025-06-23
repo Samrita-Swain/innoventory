@@ -282,10 +282,10 @@ export default function EditOrderPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="">Select Type</option>
+                  <option value="PATENT">Patent</option>
+                  <option value="TRADEMARK">Trademark</option>
+                  <option value="COPYRIGHT">Copyright</option>
                   <option value="DESIGN">Design</option>
-                  <option value="DEVELOPMENT">Development</option>
-                  <option value="CONSULTATION">Consultation</option>
-                  <option value="MAINTENANCE">Maintenance</option>
                 </select>
               </div>
 

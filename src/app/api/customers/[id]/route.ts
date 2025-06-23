@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function DELETE(
@@ -38,6 +38,15 @@ export async function DELETE(
     }
 
     const { id: customerId } = await params
+
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
 
     // Check if customer exists
     const existingCustomer = await prisma.customer.findUnique({
@@ -122,6 +131,15 @@ export async function GET(
 
     const { id: customerId } = await params
 
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       include: {
@@ -192,6 +210,15 @@ export async function PUT(
       city, state, username, gstNumber, dpiitRegister, dpiitValidTill
     } = body
 
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
     // Validate required fields
     if (!email || !country) {
       return NextResponse.json({
@@ -209,77 +236,90 @@ export async function PUT(
     }
 
     // Check if customer exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { id: customerId }
-    })
+    try {
+      const existingCustomer = await prisma.customer.findUnique({
+        where: { id: customerId }
+      })
 
-    if (!existingCustomer) {
-      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
-    }
+      if (!existingCustomer) {
+        return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+      }
 
-    // Check if email is already taken by another customer
-    if (email !== existingCustomer.email) {
-      const emailExists = await prisma.customer.findFirst({
-        where: {
+      // Check if email is already taken by another customer
+      if (email !== existingCustomer.email) {
+        const emailExists = await prisma.customer.findFirst({
+          where: {
+            email,
+            id: { not: customerId }
+          }
+        })
+
+        if (emailExists) {
+          return NextResponse.json({
+            error: 'Email already exists',
+            details: 'Another customer is already using this email address'
+          }, { status: 400 })
+        }
+      }
+
+      // Update customer
+      const updatedCustomer = await prisma.customer.update({
+        where: { id: customerId },
+        data: {
+          name: name || 'Unknown',
           email,
-          id: { not: customerId }
+          phone: phone || null,
+          company: company || companyName || individualName || 'Unknown',
+          address: address || null,
+          country,
+          isActive: isActive !== undefined ? isActive : true,
+          // Comprehensive fields
+          clientOnboardingDate: clientOnboardingDate && clientOnboardingDate.trim()
+            ? new Date(clientOnboardingDate)
+            : null,
+          companyType: companyType || null,
+          companyName: companyName || null,
+          individualName: individualName || null,
+          city: city || null,
+          state: state || null,
+          username: username || null,
+          gstNumber: gstNumber || null,
+          dpiitRegister: dpiitRegister || null,
+          dpiitValidTill: dpiitValidTill && dpiitValidTill.trim()
+            ? new Date(dpiitValidTill)
+            : null
+        },
+        include: {
+          _count: {
+            select: { orders: true }
+          }
         }
       })
 
-      if (emailExists) {
-        return NextResponse.json({
-          error: 'Email already exists',
-          details: 'Another customer is already using this email address'
-        }, { status: 400 })
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'CUSTOMER_UPDATED',
+            description: `Updated customer: ${name}`,
+            entityType: 'Customer',
+            entityId: customerId,
+            userId: payload.userId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
       }
+
+      return NextResponse.json(updatedCustomer)
+    } catch (dbError) {
+      console.error('Database error updating customer:', dbError)
+      return NextResponse.json({
+        error: 'Failed to update customer. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
     }
-
-    // Update customer
-    const updatedCustomer = await prisma.customer.update({
-      where: { id: customerId },
-      data: {
-        name: name || 'Unknown',
-        email,
-        phone: phone || null,
-        company: company || companyName || individualName || 'Unknown',
-        address: address || null,
-        country,
-        isActive: isActive !== undefined ? isActive : true,
-        // Comprehensive fields
-        clientOnboardingDate: clientOnboardingDate && clientOnboardingDate.trim()
-          ? new Date(clientOnboardingDate)
-          : null,
-        companyType: companyType || null,
-        companyName: companyName || null,
-        individualName: individualName || null,
-        city: city || null,
-        state: state || null,
-        username: username || null,
-        gstNumber: gstNumber || null,
-        dpiitRegister: dpiitRegister || null,
-        dpiitValidTill: dpiitValidTill && dpiitValidTill.trim()
-          ? new Date(dpiitValidTill)
-          : null
-      },
-      include: {
-        _count: {
-          select: { orders: true }
-        }
-      }
-    })
-
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'CUSTOMER_UPDATED',
-        description: `Updated customer: ${name}`,
-        entityType: 'Customer',
-        entityId: customerId,
-        userId: payload.userId
-      }
-    })
-
-    return NextResponse.json(updatedCustomer)
 
   } catch (error) {
     console.error('Update customer error:', error)

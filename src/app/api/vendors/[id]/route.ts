@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function DELETE(
@@ -26,48 +26,70 @@ export async function DELETE(
 
     const { id: vendorId } = await params
 
-    // Check if vendor exists
-    const existingVendor = await prisma.vendor.findUnique({
-      where: { id: vendorId }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    if (!existingVendor) {
-      return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
     }
 
-    // Check if vendor has orders
-    const orderCount = await prisma.order.count({
-      where: { vendorId }
-    })
+    // Check if vendor exists and perform deletion
+    try {
+      const existingVendor = await prisma.vendor.findUnique({
+        where: { id: vendorId }
+      })
 
-    // Always permanently delete the vendor
-    // First, we need to handle any related orders if they exist
-    if (orderCount > 0) {
-      // Option 1: Delete related orders first (cascade delete)
-      await prisma.order.deleteMany({
+      if (!existingVendor) {
+        return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+      }
+
+      // Check if vendor has orders
+      const orderCount = await prisma.order.count({
         where: { vendorId }
       })
-    }
 
-    // Now delete the vendor
-    await prisma.vendor.delete({
-      where: { id: vendorId }
-    })
-
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'VENDOR_DELETED',
-        description: `Permanently deleted vendor: ${existingVendor.name}${orderCount > 0 ? ` (and ${orderCount} related orders)` : ''}`,
-        entityType: 'Vendor',
-        entityId: vendorId,
-        userId: payload.userId
+      // Always permanently delete the vendor
+      // First, we need to handle any related orders if they exist
+      if (orderCount > 0) {
+        // Option 1: Delete related orders first (cascade delete)
+        await prisma.order.deleteMany({
+          where: { vendorId }
+        })
       }
-    })
 
-    return NextResponse.json({
-      message: `Vendor deleted successfully${orderCount > 0 ? ` (${orderCount} related orders also deleted)` : ''}`
-    })
+      // Now delete the vendor
+      await prisma.vendor.delete({
+        where: { id: vendorId }
+      })
+
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'VENDOR_DELETED',
+            description: `Permanently deleted vendor: ${existingVendor.name}${orderCount > 0 ? ` (and ${orderCount} related orders)` : ''}`,
+            entityType: 'Vendor',
+            entityId: vendorId,
+            userId: payload.userId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
+      }
+
+      return NextResponse.json({
+        message: `Vendor deleted successfully${orderCount > 0 ? ` (${orderCount} related orders also deleted)` : ''}`
+      })
+    } catch (dbError) {
+      console.error('Database error deleting vendor:', dbError)
+      return NextResponse.json({
+        error: 'Failed to delete vendor. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
+    }
 
   } catch (error) {
     console.error('Delete vendor error:', error)
@@ -97,31 +119,48 @@ export async function GET(
 
     const { id: vendorId } = await params
 
-    const vendor = await prisma.vendor.findUnique({
-      where: { id: vendorId },
-      include: {
-        _count: {
-          select: { orders: true }
-        },
-        orders: {
-          select: {
-            id: true,
-            referenceNumber: true,
-            title: true,
-            status: true,
-            amount: true,
-            createdAt: true
-          },
-          orderBy: { createdAt: 'desc' }
-        }
-      }
-    })
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
 
-    if (!vendor) {
-      return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
     }
 
-    return NextResponse.json(vendor)
+    try {
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: vendorId },
+        include: {
+          _count: {
+            select: { orders: true }
+          },
+          orders: {
+            select: {
+              id: true,
+              referenceNumber: true,
+              title: true,
+              status: true,
+              amount: true,
+              createdAt: true
+            },
+            orderBy: { createdAt: 'desc' }
+          }
+        }
+      })
+
+      if (!vendor) {
+        return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+      }
+
+      return NextResponse.json(vendor)
+    } catch (dbError) {
+      console.error('Database error fetching vendor:', dbError)
+      return NextResponse.json({
+        error: 'Failed to fetch vendor. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
+    }
 
   } catch (error) {
     console.error('Get vendor error:', error)
@@ -163,6 +202,15 @@ export async function PUT(
       city, state, username, gstNumber, startupBenefits, typeOfWork
     } = body
 
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
     // Validate required fields
     if (!email || !country) {
       return NextResponse.json({
@@ -180,76 +228,89 @@ export async function PUT(
     }
 
     // Check if vendor exists
-    const existingVendor = await prisma.vendor.findUnique({
-      where: { id: vendorId }
-    })
+    try {
+      const existingVendor = await prisma.vendor.findUnique({
+        where: { id: vendorId }
+      })
 
-    if (!existingVendor) {
-      return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
-    }
+      if (!existingVendor) {
+        return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+      }
 
-    // Check if email is already taken by another vendor
-    if (email !== existingVendor.email) {
-      const emailExists = await prisma.vendor.findFirst({
-        where: {
+      // Check if email is already taken by another vendor
+      if (email !== existingVendor.email) {
+        const emailExists = await prisma.vendor.findFirst({
+          where: {
+            email,
+            id: { not: vendorId }
+          }
+        })
+
+        if (emailExists) {
+          return NextResponse.json({
+            error: 'Email already exists',
+            details: 'Another vendor is already using this email address'
+          }, { status: 400 })
+        }
+      }
+
+      // Update vendor
+      const updatedVendor = await prisma.vendor.update({
+        where: { id: vendorId },
+        data: {
+          name: name || 'Unknown',
           email,
-          id: { not: vendorId }
+          phone: phone || null,
+          company: company || companyName || individualName || 'Unknown',
+          address: address || null,
+          country,
+          specialization: specialization || (typeOfWork && typeOfWork.length > 0 ? typeOfWork.join(', ') : null),
+          isActive: isActive !== undefined ? isActive : true,
+          // Comprehensive fields
+          onboardingDate: onboardingDate && onboardingDate.trim()
+            ? new Date(onboardingDate)
+            : null,
+          companyType: companyType || null,
+          companyName: companyName || null,
+          individualName: individualName || null,
+          city: city || null,
+          state: state || null,
+          username: username || null,
+          gstNumber: gstNumber || null,
+          startupBenefits: startupBenefits || null,
+          typeOfWork: typeOfWork || []
+        },
+        include: {
+          _count: {
+            select: { orders: true }
+          }
         }
       })
 
-      if (emailExists) {
-        return NextResponse.json({
-          error: 'Email already exists',
-          details: 'Another vendor is already using this email address'
-        }, { status: 400 })
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'VENDOR_UPDATED',
+            description: `Updated vendor: ${name}`,
+            entityType: 'Vendor',
+            entityId: vendorId,
+            userId: payload.userId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
       }
+
+      return NextResponse.json(updatedVendor)
+    } catch (dbError) {
+      console.error('Database error updating vendor:', dbError)
+      return NextResponse.json({
+        error: 'Failed to update vendor. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
     }
-
-    // Update vendor
-    const updatedVendor = await prisma.vendor.update({
-      where: { id: vendorId },
-      data: {
-        name: name || 'Unknown',
-        email,
-        phone: phone || null,
-        company: company || companyName || individualName || 'Unknown',
-        address: address || null,
-        country,
-        specialization: specialization || (typeOfWork && typeOfWork.length > 0 ? typeOfWork.join(', ') : null),
-        isActive: isActive !== undefined ? isActive : true,
-        // Comprehensive fields
-        onboardingDate: onboardingDate && onboardingDate.trim()
-          ? new Date(onboardingDate)
-          : null,
-        companyType: companyType || null,
-        companyName: companyName || null,
-        individualName: individualName || null,
-        city: city || null,
-        state: state || null,
-        username: username || null,
-        gstNumber: gstNumber || null,
-        startupBenefits: startupBenefits || null,
-        typeOfWork: typeOfWork || []
-      },
-      include: {
-        _count: {
-          select: { orders: true }
-        }
-      }
-    })
-
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'VENDOR_UPDATED',
-        description: `Updated vendor: ${name}`,
-        entityType: 'Vendor',
-        entityId: vendorId,
-        userId: payload.userId
-      }
-    })
-
-    return NextResponse.json(updatedVendor)
 
   } catch (error) {
     console.error('Update vendor error:', error)

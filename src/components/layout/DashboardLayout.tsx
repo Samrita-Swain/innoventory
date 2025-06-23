@@ -128,6 +128,7 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
         className={`sticky top-0 left-0 z-50 w-64 h-screen bg-white shadow-xl border-r border-gray-200 transform opacity-0 flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } transition-transform duration-300 ease-in-out lg:translate-x-0`}
+        style={{ position: 'sticky', top: 0 }}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 flex-shrink-0 sticky top-0 bg-white z-10">
           <h1 className="text-xl font-bold text-gray-800 tracking-tight">Innoventory</h1>
@@ -139,10 +140,12 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
           </button>
         </div>
 
-        <nav ref={menuItemsRef} className="mt-6 px-3 flex-1 overflow-y-auto min-h-0">
-          <div className="space-y-1">
+        <nav ref={menuItemsRef} className="mt-6 px-3 flex-1 overflow-y-auto min-h-0 sticky top-0">
+          <div className="space-y-1 sticky top-0">
             {filteredMenuItems.map((item) => {
-              const isActive = pathname === item.href
+              // Check if current path matches the menu item or is a sub-route
+              const isActive = pathname === item.href ||
+                               (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
               return (
                 <Link
                   key={item.name}
@@ -152,6 +155,7 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
                       ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700 shadow-sm'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm'
                   }`}
+                  style={{ position: 'sticky', top: 0 }}
                 >
                 <div className={`flex items-center justify-center w-8 h-8 rounded-lg mr-3 transition-colors ${
                   isActive
@@ -167,7 +171,7 @@ const DashboardLayout = ({ children, userRole, userPermissions }: DashboardLayou
           </div>
         </nav>
 
-        <div className="mt-auto p-6 flex-shrink-0 sticky bottom-0">
+        <div className="mt-auto p-6 flex-shrink-0 sticky bottom-0 bg-white">
           <button
             onClick={handleLogout}
             className="flex items-center w-full px-3 py-3 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all duration-200 group relative sticky bottom-0"

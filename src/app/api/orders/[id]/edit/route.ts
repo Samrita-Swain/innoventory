@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 
 export async function PUT(
@@ -28,6 +28,32 @@ export async function PUT(
     const body = await request.json()
     const { title, description, type, status, priority, country, amount, paidAmount, dueDate } = body
 
+    // Validate enum values
+    const validTypes = ['PATENT', 'TRADEMARK', 'COPYRIGHT', 'DESIGN']
+    const validStatuses = ['YET_TO_START', 'IN_PROGRESS', 'PENDING_WITH_CLIENT', 'PENDING_PAYMENT', 'COMPLETED', 'CLOSED', 'CANCELLED']
+    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+
+    if (type && !validTypes.includes(type)) {
+      return NextResponse.json({ error: `Invalid type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 })
+    }
+
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` }, { status: 400 })
+    }
+
+    if (priority && !validPriorities.includes(priority)) {
+      return NextResponse.json({ error: `Invalid priority. Must be one of: ${validPriorities.join(', ')}` }, { status: 400 })
+    }
+
+    // Check if database is available
+    const dbConnected = await isDatabaseConnected()
+
+    if (!dbConnected || !prisma) {
+      return NextResponse.json({
+        error: 'Database not available. Please try again later.'
+      }, { status: 503 })
+    }
+
     // Check if order exists
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId }
@@ -55,29 +81,42 @@ export async function PUT(
     }
 
     // Update order
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: updateData,
-      include: {
-        customer: { select: { name: true, company: true } },
-        vendor: { select: { name: true, company: true } },
-        assignedTo: { select: { name: true } }
-      }
-    })
+    try {
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: updateData,
+        include: {
+          customer: { select: { name: true, company: true } },
+          vendor: { select: { name: true, company: true } },
+          assignedTo: { select: { name: true } }
+        }
+      })
 
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        action: 'ORDER_UPDATED',
-        description: `Order ${existingOrder.referenceNumber} was updated`,
-        entityType: 'Order',
-        entityId: orderId,
-        userId: payload.userId,
-        orderId: orderId
+      // Log activity
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'ORDER_UPDATED',
+            description: `Order ${existingOrder.referenceNumber} was updated`,
+            entityType: 'Order',
+            entityId: orderId,
+            userId: payload.userId,
+            orderId: orderId
+          }
+        })
+      } catch (logError) {
+        console.error('Failed to log activity:', logError)
+        // Continue even if logging fails
       }
-    })
 
-    return NextResponse.json(updatedOrder)
+      return NextResponse.json(updatedOrder)
+    } catch (dbError) {
+      console.error('Database error updating order:', dbError)
+      return NextResponse.json({
+        error: 'Failed to update order. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 503 })
+    }
 
   } catch (error) {
     console.error('Update order error:', error)
