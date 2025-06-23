@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
     // Check if database is available
     const dbConnected = await isDatabaseConnected()
 
-    if (!dbConnected) {
+    if (!dbConnected || !prisma) {
       // Return empty array when database is not available
-      console.log('Database not connected, returning empty customers array')
+      console.log('Database not connected or Prisma not initialized, returning empty customers array')
       return NextResponse.json([])
     }
 
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     // Check if database is available
     const dbConnected = await isDatabaseConnected()
 
-    if (!dbConnected) {
+    if (!dbConnected || !prisma) {
       return NextResponse.json({
         error: 'Database not available. Please try again later.'
       }, { status: 503 })

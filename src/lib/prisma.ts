@@ -26,19 +26,28 @@ const isDatabaseRequired = () => {
 }
 
 // Create a single instance of Prisma client with Vercel-optimized configuration
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  datasources: {
-    db: {
-      url: getDatabaseUrl(),
+let prismaInstance: PrismaClient | null = null
+
+try {
+  prismaInstance = globalForPrisma.prisma ?? new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    datasources: {
+      db: {
+        url: getDatabaseUrl(),
+      },
     },
-  },
-})
+  })
+} catch (error) {
+  console.warn('Failed to initialize Prisma client:', error)
+  prismaInstance = null
+}
+
+export const prisma = prismaInstance
 
 // Helper function to check database connectivity
 export const isDatabaseConnected = async (): Promise<boolean> => {
   try {
-    if (!process.env.DATABASE_URL) {
+    if (!process.env.DATABASE_URL || !prisma) {
       return false
     }
     await prisma.$queryRaw`SELECT 1`
@@ -50,13 +59,13 @@ export const isDatabaseConnected = async (): Promise<boolean> => {
 }
 
 // In development, store the client on the global object to prevent multiple instances
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+if (process.env.NODE_ENV !== 'production' && prismaInstance) {
+  globalForPrisma.prisma = prismaInstance
 }
 
 // Graceful shutdown - only in non-serverless environments
-if (typeof window === 'undefined' && process.env.VERCEL !== '1') {
+if (typeof window === 'undefined' && process.env.VERCEL !== '1' && prismaInstance) {
   process.on('beforeExit', async () => {
-    await prisma.$disconnect()
+    await prismaInstance.$disconnect()
   })
 }
