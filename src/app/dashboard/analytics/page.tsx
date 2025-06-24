@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, TrendingUp, DollarSign, Users, FileText } from 'lucide-react'
+import { BarChart3, TrendingUp, IndianRupee, Users, FileText } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
@@ -189,7 +189,7 @@ export default function AnalyticsPage() {
       title: 'Total Revenue',
       value: analyticsData.kpiData.totalRevenue,
       previousValue: Math.round(analyticsData.kpiData.totalRevenue * 0.8), // Estimate previous value
-      icon: DollarSign,
+      icon: IndianRupee,
       color: 'bg-green-500',
       trend: 'up' as const,
       subtitle: 'This period'
@@ -328,7 +328,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                ${analyticsData.kpiData.totalRevenue.toLocaleString()}
+                ₹{analyticsData.kpiData.totalRevenue.toLocaleString()}
               </div>
               <div className="text-sm text-gray-600">Total Revenue</div>
             </div>

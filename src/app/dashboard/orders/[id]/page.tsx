@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, FileText, User, Building, Calendar, DollarSign, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, FileText, User, Building, Calendar, IndianRupee, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
 
@@ -253,15 +253,15 @@ export default function OrderDetailsPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Total Amount</label>
-                <p className="text-2xl font-bold text-gray-900">${order.amount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">₹{order.amount.toLocaleString()}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Paid Amount</label>
-                <p className="text-xl font-semibold text-green-600">${order.paidAmount.toLocaleString()}</p>
+                <p className="text-xl font-semibold text-green-600">₹{order.paidAmount.toLocaleString()}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Remaining</label>
-                <p className="text-xl font-semibold text-red-600">${(order.amount - order.paidAmount).toLocaleString()}</p>
+                <p className="text-xl font-semibold text-red-600">₹{(order.amount - order.paidAmount).toLocaleString()}</p>
               </div>
               {order.dueDate && (
                 <div>

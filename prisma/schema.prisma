@@ -151,7 +151,7 @@ model Order {
   completedDate   DateTime?
   amount          Float?
   paidAmount      Float         @default(0)
-  currency        String        @default("USD")
+  currency        String        @default("INR")
   customerId      String
   vendorId        String?
   assignedToId    String
@@ -172,7 +172,7 @@ model Invoice {
   orderId       String
   amount        Float
   paidAmount    Float         @default(0)
-  currency      String        @default("USD")
+  currency      String        @default("INR")
   status        InvoiceStatus @default(PENDING)
   dueDate       DateTime
   paidDate      DateTime?

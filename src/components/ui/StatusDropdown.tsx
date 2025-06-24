@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, CheckCircle, Clock, AlertTriangle, DollarSign, XCircle, Ban } from 'lucide-react'
+import { ChevronDown, CheckCircle, Clock, AlertTriangle, IndianRupee, XCircle, Ban } from 'lucide-react'
 
 interface StatusDropdownProps {
   currentStatus: string
@@ -36,7 +36,7 @@ const statusOptions = [
   {
     value: 'PENDING_PAYMENT',
     label: 'Pending Payment',
-    icon: DollarSign,
+    icon: IndianRupee,
     color: 'bg-yellow-100 text-yellow-800',
     iconColor: 'text-yellow-600'
   },

@@ -181,7 +181,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">${mockReportData.overview.totalRevenue.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-gray-900">₹{mockReportData.overview.totalRevenue.toLocaleString()}</p>
                   </div>
                 </div>
               </motion.div>
@@ -330,7 +330,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm text-gray-600">Avg Order Value</p>
-                    <p className="text-2xl font-bold text-gray-900">${mockReportData.customers.avgOrderValue}</p>
+                    <p className="text-2xl font-bold text-gray-900">₹{mockReportData.customers.avgOrderValue}</p>
                   </div>
                 </div>
               </motion.div>

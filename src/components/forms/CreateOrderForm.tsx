@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, FileText, User, Building2, DollarSign, Calendar, CheckCircle, Circle, Upload, Hash, AlertCircle, MessageSquare } from 'lucide-react'
+import { X, FileText, User, Building2, IndianRupee, Calendar, CheckCircle, Circle, Upload, Hash, AlertCircle, MessageSquare } from 'lucide-react'
 import anime from 'animejs'
 
 interface CreateOrderFormProps {
@@ -856,8 +856,8 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                 {/* Total Invoice Value */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <DollarSign className="inline h-4 w-4 mr-1" />
-                    Total Invoice Value *
+                    <IndianRupee className="inline h-4 w-4 mr-1" />
+                    Total Invoice Value (INR) *
                   </label>
                   <input
                     type="number"
@@ -869,7 +869,7 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                       errors.totalInvoiceValue ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter total invoice value"
+                    placeholder="Enter total invoice value in INR"
                   />
                   {errors.totalInvoiceValue && <p className="text-red-500 text-sm mt-1">{errors.totalInvoiceValue}</p>}
                 </div>
@@ -877,8 +877,8 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                 {/* Total GST + Govt Fees */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <DollarSign className="inline h-4 w-4 mr-1" />
-                    Total value of GST + Govt fees
+                    <IndianRupee className="inline h-4 w-4 mr-1" />
+                    Total value of GST + Govt fees (INR)
                   </label>
                   <input
                     type="number"
@@ -888,7 +888,7 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                     min="0"
                     step="0.01"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    placeholder="Enter GST + Government fees"
+                    placeholder="Enter GST + Government fees in INR"
                   />
                 </div>
               </div>
@@ -1073,8 +1073,8 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                 {/* Amount to be Paid to vendor */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <DollarSign className="inline h-4 w-4 mr-1" />
-                    Amount to be Paid to vendor
+                    <IndianRupee className="inline h-4 w-4 mr-1" />
+                    Amount to be Paid to vendor (INR)
                   </label>
                   <input
                     type="number"
@@ -1084,15 +1084,15 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                     min="0"
                     step="0.01"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                    placeholder="Enter amount to be paid"
+                    placeholder="Enter amount to be paid in INR"
                   />
                 </div>
 
                 {/* Amount Paid to vendor */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <DollarSign className="inline h-4 w-4 mr-1" />
-                    Amount Paid to vendor
+                    <IndianRupee className="inline h-4 w-4 mr-1" />
+                    Amount Paid to vendor (INR)
                   </label>
                   <input
                     type="number"
@@ -1102,7 +1102,7 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                     min="0"
                     step="0.01"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                    placeholder="Enter amount paid"
+                    placeholder="Enter amount paid in INR"
                   />
                 </div>
               </div>

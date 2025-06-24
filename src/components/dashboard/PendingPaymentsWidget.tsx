@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { DollarSign, AlertTriangle, Clock, ExternalLink, Image as ImageIcon } from 'lucide-react'
+import { IndianRupee, AlertTriangle, Clock, ExternalLink, Image as ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 
 interface PendingPaymentItem {
@@ -22,13 +22,13 @@ interface PendingPaymentsWidgetProps {
   title?: string
 }
 
-const PendingPaymentsWidget = ({ 
-  data, 
-  onItemClick, 
-  onViewAll, 
-  title = "Pending Payments Overview" 
+const PendingPaymentsWidget = ({
+  data,
+  onItemClick,
+  onViewAll,
+  title = "Pending Payments Overview"
 }: PendingPaymentsWidgetProps) => {
-  
+
   const getDaysLeftColor = (daysLeft: number) => {
     if (daysLeft <= 3) return 'text-red-600 font-bold'
     if (daysLeft <= 7) return 'text-orange-600 font-semibold'
@@ -42,9 +42,9 @@ const PendingPaymentsWidget = ({
   }
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: currency,
+      currency: 'INR',
     }).format(amount)
   }
 
@@ -57,13 +57,13 @@ const PendingPaymentsWidget = ({
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        <DollarSign className="h-5 w-5 text-gray-400" />
+        <IndianRupee className="h-5 w-5 text-gray-400" />
       </div>
 
       <div className="space-y-3">
         {data.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <DollarSign className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+            <IndianRupee className="h-12 w-12 mx-auto mb-2 text-gray-300" />
             <p>No pending payments</p>
           </div>
         ) : (
@@ -103,7 +103,7 @@ const PendingPaymentsWidget = ({
                       {item.invoiceNumber}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 mb-1">
                     <span className="text-xs text-gray-500">Order:</span>
                     <span className="text-sm font-medium text-blue-600 hover:text-blue-800">
@@ -111,7 +111,7 @@ const PendingPaymentsWidget = ({
                     </span>
                     <ExternalLink className="h-3 w-3 text-gray-400" />
                   </div>
-                  
+
                   <p className="text-xs text-gray-600 truncate">
                     Customer: {item.customerName}
                   </p>
@@ -156,7 +156,7 @@ const PendingPaymentsWidget = ({
             <span className="font-semibold text-gray-900">
               {formatCurrency(
                 data.reduce((sum, item) => sum + item.amount, 0),
-                data[0]?.currency || 'USD'
+                data[0]?.currency || 'INR'
               )}
             </span>
           </div>
