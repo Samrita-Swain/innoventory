@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Briefcase, Plus, Search, Edit, Trash2 } from 'lucide-react'
+import { Briefcase, Plus, Search, Edit, Trash2, Eye, EyeOff } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
@@ -138,6 +138,50 @@ export default function TypeOfWorkPage() {
 
   const handleEditWorkType = (workTypeId: string) => {
     router.push(`/dashboard/type-of-work/${workTypeId}/edit`)
+  }
+
+  const handleToggleActiveStatus = async (workTypeId: string, workTypeName: string, currentStatus: boolean) => {
+    const action = currentStatus ? 'deactivate' : 'activate'
+    const confirmed = confirm(`Are you sure you want to ${action} "${workTypeName}"?`)
+    if (!confirmed) return
+
+    try {
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
+      if (!token) {
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          setError('Please login again')
+          return
+        }
+      }
+
+      const response = await fetch(`/api/type-of-work/${workTypeId}/toggle-status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          isActive: !currentStatus
+        })
+      })
+
+      if (response.ok) {
+        setSuccessMessage(`Work type "${workTypeName}" ${action}d successfully`)
+        setTimeout(() => setSuccessMessage(''), 3000)
+        fetchWorkTypes() // Refresh the list
+      } else {
+        const data = await response.json()
+        setError(data.error || `Failed to ${action} work type`)
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing work type:`, error)
+      setError(`Failed to ${action} work type`)
+    }
   }
 
   const handleDeleteWorkType = async (workTypeId: string, workTypeName: string) => {
@@ -434,6 +478,17 @@ export default function TypeOfWorkPage() {
                               title="Edit Work Type"
                             >
                               <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleActiveStatus(workType.id, workType.name, workType.isActive)}
+                              className={`p-1 rounded transition-colors cursor-pointer ${
+                                workType.isActive
+                                  ? 'text-orange-600 hover:text-orange-900 hover:bg-orange-50'
+                                  : 'text-blue-600 hover:text-blue-900 hover:bg-blue-50'
+                              }`}
+                              title={workType.isActive ? 'Deactivate Work Type' : 'Activate Work Type'}
+                            >
+                              {workType.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                             <button
                               onClick={() => handleDeleteWorkType(workType.id, workType.name)}

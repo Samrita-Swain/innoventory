@@ -70,25 +70,9 @@ const companyTypes = [
   'LLP'
 ]
 
-const workTypes = [
-  'Patents',
-  'Trademarks',
-  'Copyrights',
-  'Designs',
-  'Consultancy',
-  'Audit Service',
-  'Agreement drafting'
-]
+// Dynamic work types will be fetched from API
 
-const areasOfExpertise = [
-  'Patents',
-  'Trademarks',
-  'Copyrights',
-  'Designs',
-  'Consultancy',
-  'Audit Service',
-  'Agreement drafting'
-]
+// Areas of expertise will use the same dynamic work types
 
 const countryCodes = [
   { code: '+91', country: 'India' },
@@ -125,6 +109,8 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
     typeOfWork: [] as string[]
   })
 
+  const [workTypes, setWorkTypes] = useState<Array<{ id: string; name: string }>>([])
+  const [loadingWorkTypes, setLoadingWorkTypes] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [pointsOfContact, setPointsOfContact] = useState<PointOfContact[]>([])
@@ -148,8 +134,47 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
     return locationData[formData.country][formData.state]
   }
 
+  // Fetch work types from API
+  const fetchWorkTypes = async () => {
+    setLoadingWorkTypes(true)
+    try {
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
+      if (!token) {
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          console.log('No token found for work types')
+          return
+        }
+      }
+
+      const response = await fetch('/api/type-of-work', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setWorkTypes(data.filter((workType: any) => workType.isActive))
+      } else {
+        console.error('Failed to fetch work types:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching work types:', error)
+    } finally {
+      setLoadingWorkTypes(false)
+    }
+  }
+
   // Pre-populate form with vendor data
   useEffect(() => {
+    // Fetch work types when component mounts
+    fetchWorkTypes()
+
     if (vendor) {
       setFormData({
         name: vendor.name || '',
@@ -707,19 +732,29 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Type of Work
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {workTypes.map(workType => (
-                    <label key={workType} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.typeOfWork.includes(workType)}
-                        onChange={() => handleWorkTypeChange(workType)}
-                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                      />
-                      <span className="text-sm text-gray-700">{workType}</span>
-                    </label>
-                  ))}
-                </div>
+                {loadingWorkTypes ? (
+                  <div className="flex items-center py-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500 mr-2"></div>
+                    <span className="text-sm text-gray-600">Loading work types...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {workTypes.map(workType => (
+                      <label key={workType.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.typeOfWork.includes(workType.name)}
+                          onChange={() => handleWorkTypeChange(workType.name)}
+                          className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        />
+                        <span className="text-sm text-gray-700">{workType.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {workTypes.length === 0 && !loadingWorkTypes && (
+                  <p className="text-sm text-gray-500 py-2">No active work types available</p>
+                )}
               </div>
 
               {/* Status */}
@@ -835,8 +870,8 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
                         >
                           <option value="">Select area of expertise</option>
-                          {areasOfExpertise.map(area => (
-                            <option key={area} value={area}>{area}</option>
+                          {workTypes.map(workType => (
+                            <option key={workType.id} value={workType.name}>{workType.name}</option>
                           ))}
                         </select>
                       </div>
