@@ -11,16 +11,27 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
 
-    // Verify JWT token with demo secret
+    // Verify JWT token or handle demo token
     let payload
-    try {
-      payload = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      payload = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin',
+        permissions: ['MANAGE_CUSTOMERS', 'MANAGE_USERS', 'MANAGE_VENDORS', 'MANAGE_ORDERS', 'VIEW_ANALYTICS', 'MANAGE_PAYMENTS', 'VIEW_REPORTS']
+      }
+    } else {
+      try {
+        payload = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
+      } catch (error) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
 
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      if (!payload) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     const { searchParams } = new URL(request.url)
@@ -87,16 +98,27 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7)
 
-    // Verify JWT token with demo secret
+    // Verify JWT token or handle demo token
     let payload
-    try {
-      payload = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      payload = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin',
+        permissions: ['MANAGE_CUSTOMERS', 'MANAGE_USERS', 'MANAGE_VENDORS', 'MANAGE_ORDERS', 'VIEW_ANALYTICS', 'MANAGE_PAYMENTS', 'VIEW_REPORTS']
+      }
+    } else {
+      try {
+        payload = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
+      } catch (error) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
 
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      if (!payload) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     // Check permissions (demo users have all permissions)
@@ -206,6 +228,22 @@ export async function POST(request: NextRequest) {
     })
 
     try {
+      // Check if the user exists in the database for real users
+      let createdById = null
+      if (payload.userId !== 'demo-admin-id') {
+        try {
+          const userExists = await prisma.user.findUnique({
+            where: { id: payload.userId },
+            select: { id: true }
+          })
+          if (userExists) {
+            createdById = payload.userId
+          }
+        } catch (userCheckError) {
+          console.log('User check failed, proceeding without createdById:', userCheckError)
+        }
+      }
+
       const customer = await prisma.customer.create({
         data: {
           // Original fields
@@ -240,25 +278,27 @@ export async function POST(request: NextRequest) {
           udhyamRegistrationUrl,
           otherDocsUrls: [], // Placeholder for other documents
 
-          createdById: payload.userId,
+          createdById: createdById, // Only set if user exists
           isActive: true
         }
       })
 
-      // Log activity
-      try {
-        await prisma.activityLog.create({
-          data: {
-            action: 'CUSTOMER_CREATED',
-            description: `Created new customer: ${customerName}`,
-            entityType: 'Customer',
-            entityId: customer.id,
-            userId: payload.userId
-          }
-        })
-      } catch (logError) {
-        console.error('Failed to log activity:', logError)
-        // Continue even if logging fails
+      // Log activity (only if we have a valid user ID)
+      if (createdById) {
+        try {
+          await prisma.activityLog.create({
+            data: {
+              action: 'CUSTOMER_CREATED',
+              description: `Created new customer: ${customerName}`,
+              entityType: 'Customer',
+              entityId: customer.id,
+              userId: createdById
+            }
+          })
+        } catch (logError) {
+          console.error('Failed to log activity:', logError)
+          // Continue even if logging fails
+        }
       }
 
       return NextResponse.json(customer, { status: 201 })

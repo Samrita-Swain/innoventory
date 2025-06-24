@@ -166,10 +166,17 @@ export default function EditCustomerPage() {
 
   const fetchCustomer = async () => {
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
       if (!token) {
-        router.push('/login')
-        return
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          router.push('/login')
+          return
+        }
       }
 
       const response = await fetch(`/api/customers/${customerId}`, {
@@ -307,10 +314,16 @@ export default function EditCustomerPage() {
     setIsLoading(true)
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
 
+      // If no token found, check if we're in demo mode
       if (!token) {
-        throw new Error('Please login again to continue')
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          throw new Error('Please login again to continue')
+        }
       }
 
       // Prepare submit data

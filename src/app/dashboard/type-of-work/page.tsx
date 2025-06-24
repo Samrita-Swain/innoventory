@@ -42,12 +42,19 @@ export default function TypeOfWorkPage() {
       setIsLoading(true)
       setError('')
 
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
       if (!token) {
-        // If no token, show demo data
-        setWorkTypes([])
-        setIsLoading(false)
-        return
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          // If no token and no demo role, show empty data
+          setWorkTypes([])
+          setIsLoading(false)
+          return
+        }
       }
 
       const response = await fetch('/api/type-of-work', {
@@ -139,10 +146,17 @@ export default function TypeOfWorkPage() {
     if (!confirmed) return
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
       if (!token) {
-        setError('Please login again')
-        return
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          setError('Please login again')
+          return
+        }
       }
 
       const response = await fetch(`/api/type-of-work/${workTypeId}`, {

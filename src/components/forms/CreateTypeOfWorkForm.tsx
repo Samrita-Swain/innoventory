@@ -51,10 +51,17 @@ const CreateTypeOfWorkForm = ({ isOpen, onClose, onSuccess }: CreateTypeOfWorkFo
     setError('')
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
       if (!token) {
-        setError('Please login again')
-        return
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          setError('Please login again')
+          return
+        }
       }
 
       const response = await fetch('/api/type-of-work', {

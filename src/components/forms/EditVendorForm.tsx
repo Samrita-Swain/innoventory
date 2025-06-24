@@ -178,10 +178,16 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
     setErrors({})
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
 
+      // If no token found, check if we're in demo mode
       if (!token) {
-        throw new Error('Please login again to continue')
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          throw new Error('Please login again to continue')
+        }
       }
 
       const response = await fetch(`/api/vendors/${vendor.id}`, {

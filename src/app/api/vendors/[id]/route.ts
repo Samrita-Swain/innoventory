@@ -13,10 +13,23 @@ export async function DELETE(
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyToken(token)
 
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    // Verify JWT token or handle demo token
+    let payload
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      payload = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin',
+        permissions: ['MANAGE_VENDORS', 'MANAGE_USERS', 'MANAGE_CUSTOMERS', 'MANAGE_ORDERS', 'VIEW_ANALYTICS', 'MANAGE_PAYMENTS', 'VIEW_REPORTS']
+      }
+    } else {
+      payload = verifyToken(token)
+      if (!payload) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     // Check permissions
@@ -111,10 +124,23 @@ export async function GET(
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyToken(token)
 
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    // Verify JWT token or handle demo token
+    let payload
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      payload = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin',
+        permissions: ['MANAGE_VENDORS', 'MANAGE_USERS', 'MANAGE_CUSTOMERS', 'MANAGE_ORDERS', 'VIEW_ANALYTICS', 'MANAGE_PAYMENTS', 'VIEW_REPORTS']
+      }
+    } else {
+      payload = verifyToken(token)
+      if (!payload) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     const { id: vendorId } = await params
@@ -182,10 +208,23 @@ export async function PUT(
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyToken(token)
 
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    // Verify JWT token or handle demo token
+    let payload
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      payload = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin',
+        permissions: ['MANAGE_VENDORS', 'MANAGE_USERS', 'MANAGE_CUSTOMERS', 'MANAGE_ORDERS', 'VIEW_ANALYTICS', 'MANAGE_PAYMENTS', 'VIEW_REPORTS']
+      }
+    } else {
+      payload = verifyToken(token)
+      if (!payload) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     // Check permissions
@@ -287,20 +326,30 @@ export async function PUT(
         }
       })
 
-      // Log activity
-      try {
-        await prisma.activityLog.create({
-          data: {
-            action: 'VENDOR_UPDATED',
-            description: `Updated vendor: ${name}`,
-            entityType: 'Vendor',
-            entityId: vendorId,
-            userId: payload.userId
+      // Log activity (only if we have a valid user ID)
+      if (payload.userId !== 'demo-admin-id') {
+        try {
+          // Check if user exists before logging
+          const userExists = await prisma.user.findUnique({
+            where: { id: payload.userId },
+            select: { id: true }
+          })
+
+          if (userExists) {
+            await prisma.activityLog.create({
+              data: {
+                action: 'VENDOR_UPDATED',
+                description: `Updated vendor: ${name}`,
+                entityType: 'Vendor',
+                entityId: vendorId,
+                userId: payload.userId
+              }
+            })
           }
-        })
-      } catch (logError) {
-        console.error('Failed to log activity:', logError)
-        // Continue even if logging fails
+        } catch (logError) {
+          console.error('Failed to log activity:', logError)
+          // Continue even if logging fails
+        }
       }
 
       return NextResponse.json(updatedVendor)

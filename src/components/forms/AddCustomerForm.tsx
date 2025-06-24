@@ -193,11 +193,16 @@ const AddCustomerForm = ({ isOpen, onClose, onSuccess }: AddCustomerFormProps) =
     setIsLoading(true)
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
 
-      // Check if token exists
+      // If no token found, check if we're in demo mode
       if (!token) {
-        throw new Error('Please login again to continue')
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          throw new Error('Please login again to continue')
+        }
       }
 
       // Create FormData for file uploads

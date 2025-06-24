@@ -220,7 +220,17 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
     setIsLoading(true)
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
+      if (!token) {
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          throw new Error('Please login again to continue')
+        }
+      }
 
       // Create FormData for file uploads
       const submitData = new FormData()

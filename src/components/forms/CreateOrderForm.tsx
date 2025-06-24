@@ -86,16 +86,7 @@ interface OrderFormData {
   lawyerReferenceNumber: string
 }
 
-const workTypes = [
-  { value: 'PATENTS', label: 'Patents' },
-  { value: 'TRADEMARKS', label: 'Trademarks' },
-  { value: 'COPYRIGHTS', label: 'Copyrights' },
-  { value: 'DESIGNS', label: 'Designs' },
-  { value: 'CONSULTANCY', label: 'Consultancy' },
-  { value: 'AUDIT_SERVICE', label: 'Audit Service' },
-  { value: 'AGREEMENT_DRAFTING', label: 'Agreement drafting' },
-  { value: 'OTHERS', label: 'Others' }
-]
+// Dynamic work types will be fetched from API
 
 const vendorStatusOptions = [
   { value: 'YET_TO_START', label: 'Yet to start' },
@@ -108,6 +99,8 @@ const vendorStatusOptions = [
 const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) => {
   const [activeSection, setActiveSection] = useState<FormSection>('customer')
   const [completedSections, setCompletedSections] = useState<Set<FormSection>>(new Set())
+  const [workTypes, setWorkTypes] = useState<Array<{ id: string; name: string }>>([])
+  const [loadingWorkTypes, setLoadingWorkTypes] = useState(false)
 
   const [customerData, setCustomerData] = useState<CustomerFormData>({
     customerId: '',
@@ -172,6 +165,7 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
   useEffect(() => {
     if (isOpen) {
       fetchData()
+      fetchWorkTypes()
       generateOrderReference()
     }
   }, [isOpen])
@@ -208,6 +202,42 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
 
     } catch (error) {
       console.error('Error fetching data:', error)
+    }
+  }
+
+  // Fetch work types from API
+  const fetchWorkTypes = async () => {
+    setLoadingWorkTypes(true)
+    try {
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
+      if (!token) {
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          console.log('No token found for work types')
+          return
+        }
+      }
+
+      const response = await fetch('/api/type-of-work', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setWorkTypes(data.filter((workType: any) => workType.isActive))
+      } else {
+        console.error('Failed to fetch work types:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching work types:', error)
+    } finally {
+      setLoadingWorkTypes(false)
     }
   }
 
@@ -735,10 +765,13 @@ const CreateOrderForm = ({ isOpen, onClose, onSuccess }: CreateOrderFormProps) =
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                       errors.typeOfWork ? 'border-red-500' : 'border-gray-300'
                     }`}
+                    disabled={loadingWorkTypes}
                   >
-                    <option value="">Select type of work</option>
+                    <option value="">
+                      {loadingWorkTypes ? 'Loading work types...' : 'Select type of work'}
+                    </option>
                     {workTypes.map(type => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
+                      <option key={type.id} value={type.name}>{type.name}</option>
                     ))}
                   </select>
                   {errors.typeOfWork && <p className="text-red-500 text-sm mt-1">{errors.typeOfWork}</p>}

@@ -14,13 +14,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const token = authHeader.substring(7)
 
-    // Verify JWT token
+    // Verify JWT token or handle demo token
     let decoded
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
-    } catch (jwtError) {
-      console.error('JWT verification failed:', jwtError)
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      decoded = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin'
+      }
+    } else {
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
+      } catch (jwtError) {
+        console.error('JWT verification failed:', jwtError)
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     // Check if database is connected
@@ -66,13 +76,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const token = authHeader.substring(7)
 
-    // Verify JWT token
+    // Verify JWT token or handle demo token
     let decoded
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
-    } catch (jwtError) {
-      console.error('JWT verification failed:', jwtError)
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      decoded = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin'
+      }
+    } else {
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
+      } catch (jwtError) {
+        console.error('JWT verification failed:', jwtError)
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     const body = await request.json()
@@ -149,13 +169,23 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const token = authHeader.substring(7)
 
-    // Verify JWT token
+    // Verify JWT token or handle demo token
     let decoded
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
-    } catch (jwtError) {
-      console.error('JWT verification failed:', jwtError)
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      decoded = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin'
+      }
+    } else {
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
+      } catch (jwtError) {
+        console.error('JWT verification failed:', jwtError)
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     // Check if database is connected

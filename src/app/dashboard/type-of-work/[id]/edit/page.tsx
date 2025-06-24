@@ -79,11 +79,18 @@ export default function EditTypeOfWorkPage() {
     try {
       setIsLoading(true)
       setError('')
-      
-      const token = localStorage.getItem('token')
+
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
       if (!token) {
-        setError('No authentication token found')
-        return
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          setError('No authentication token found')
+          return
+        }
       }
 
       const response = await fetch(`/api/type-of-work/${params.id}`, {
@@ -127,10 +134,17 @@ export default function EditTypeOfWorkPage() {
     setSuccessMessage('')
 
     try {
-      const token = localStorage.getItem('token')
+      let token = localStorage.getItem('token')
+
+      // If no token found, check if we're in demo mode
       if (!token) {
-        setError('Please login again')
-        return
+        const demoRole = localStorage.getItem('demoRole')
+        if (demoRole) {
+          token = 'demo-token'
+        } else {
+          setError('Please login again')
+          return
+        }
       }
 
       const response = await fetch(`/api/type-of-work/${params.id}`, {
