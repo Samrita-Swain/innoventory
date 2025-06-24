@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, User, Mail, Key, Shield, Calendar, MapPin, Globe, FileText, Upload, Briefcase } from 'lucide-react'
+import { X, User, Mail, Key, Shield, Calendar, MapPin, Globe, FileText, Upload, Briefcase, Edit } from 'lucide-react'
 import anime from 'animejs'
+import { globalLocationData } from '../../data/globalLocationData'
 
-interface CreateSubAdminFormProps {
+interface EditSubAdminFormProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  subAdmin: any
 }
 
 const availablePermissions = [
@@ -27,13 +29,11 @@ const termOfWorkOptions = [
   'Internship'
 ]
 
-import { globalLocationData } from '../../data/globalLocationData'
-
 // Use the comprehensive global location data
 const locationData = globalLocationData
 const countries = Object.keys(locationData)
 
-const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormProps) => {
+const EditSubAdminForm = ({ isOpen, onClose, onSuccess, subAdmin }: EditSubAdminFormProps) => {
   const [formData, setFormData] = useState({
     subAdminOnboardingDate: '',
     name: '',
@@ -45,8 +45,6 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
     username: '',
     panNumber: '',
     termOfWork: '',
-    password: '',
-    confirmPassword: '',
     permissions: [] as string[]
   })
 
@@ -72,6 +70,27 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
     if (!formData.country || !formData.state || !locationData[formData.country]?.[formData.state]) return []
     return locationData[formData.country][formData.state]
   }
+
+  // Pre-populate form with sub-admin data
+  useEffect(() => {
+    if (subAdmin) {
+      setFormData({
+        subAdminOnboardingDate: subAdmin.subAdminOnboardingDate
+          ? new Date(subAdmin.subAdminOnboardingDate).toISOString().split('T')[0]
+          : '',
+        name: subAdmin.name || '',
+        email: subAdmin.email || '',
+        address: subAdmin.address || '',
+        city: subAdmin.city || '',
+        state: subAdmin.state || '',
+        country: subAdmin.country || '',
+        username: subAdmin.username || '',
+        panNumber: subAdmin.panNumber || '',
+        termOfWork: subAdmin.termOfWork || '',
+        permissions: subAdmin.permissions || []
+      })
+    }
+  }, [subAdmin])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -131,12 +150,6 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
     if (!formData.country) newErrors.country = 'Country is required'
     if (!formData.username.trim()) newErrors.username = 'Username is required'
-    if (!formData.password) newErrors.password = 'Password is required'
-    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters'
-    if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm password'
-    else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
-    }
     if (formData.permissions.length === 0) newErrors.permissions = 'At least one permission is required'
 
     setErrors(newErrors)
@@ -194,8 +207,8 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
         }
       })
 
-      const response = await fetch('/api/users', {
-        method: 'POST',
+      const response = await fetch(`/api/users/${subAdmin.id}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -205,7 +218,7 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create sub-admin')
+        throw new Error(data.error || 'Failed to update sub-admin')
       }
 
       // Success animation
@@ -216,37 +229,12 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
         easing: 'easeInOutSine'
       })
 
-      // Reset form
-      setFormData({
-        subAdminOnboardingDate: '',
-        name: '',
-        email: '',
-        address: '',
-        city: '',
-        state: '',
-        country: '',
-        username: '',
-        panNumber: '',
-        termOfWork: '',
-        password: '',
-        confirmPassword: '',
-        permissions: []
-      })
-
-      setFiles({
-        tdsFile: null,
-        nda: null,
-        employmentAgreement: null,
-        panCard: null,
-        others: []
-      })
-
       onSuccess()
       onClose()
 
     } catch (error) {
-      console.error('Error creating sub-admin:', error)
-      setErrors({ submit: error instanceof Error ? error.message : 'Failed to create sub-admin' })
+      console.error('Error updating sub-admin:', error)
+      setErrors({ submit: error instanceof Error ? error.message : 'Failed to update sub-admin' })
     } finally {
       setIsLoading(false)
     }
@@ -265,8 +253,8 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-            <Shield className="mr-3 h-6 w-6 text-blue-600" />
-            Create Sub-Administrator
+            <Edit className="mr-3 h-6 w-6 text-blue-600" />
+            Edit Sub-Administrator
           </h2>
           <button
             onClick={onClose}
@@ -497,48 +485,6 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
               </div>
             </div>
 
-            {/* Password Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Key className="inline h-4 w-4 mr-1" />
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
-                    errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter password"
-                />
-                {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Key className="inline h-4 w-4 mr-1" />
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
-                    errors.confirmPassword ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  placeholder="Confirm password"
-                />
-                {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
-              </div>
-            </div>
-
             {/* File Upload Section */}
             <div className="border rounded-lg p-4 bg-gray-50">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
@@ -552,6 +498,15 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     TDS File
                   </label>
+                  {subAdmin.tdsFileUrl && (
+                    <div className="mb-2 p-2 bg-blue-50 rounded border">
+                      <p className="text-sm text-blue-700">Current file:
+                        <a href={subAdmin.tdsFileUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                          View TDS File
+                        </a>
+                      </p>
+                    </div>
+                  )}
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -568,6 +523,15 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     NDA
                   </label>
+                  {subAdmin.ndaFileUrl && (
+                    <div className="mb-2 p-2 bg-green-50 rounded border">
+                      <p className="text-sm text-green-700">Current file:
+                        <a href={subAdmin.ndaFileUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                          View NDA File
+                        </a>
+                      </p>
+                    </div>
+                  )}
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -584,6 +548,15 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Employment Agreement
                   </label>
+                  {subAdmin.employmentAgreementUrl && (
+                    <div className="mb-2 p-2 bg-orange-50 rounded border">
+                      <p className="text-sm text-orange-700">Current file:
+                        <a href={subAdmin.employmentAgreementUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                          View Agreement File
+                        </a>
+                      </p>
+                    </div>
+                  )}
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -600,6 +573,15 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Pan Card
                   </label>
+                  {subAdmin.panCardUrl && (
+                    <div className="mb-2 p-2 bg-purple-50 rounded border">
+                      <p className="text-sm text-purple-700">Current file:
+                        <a href={subAdmin.panCardUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                          View PAN Card
+                        </a>
+                      </p>
+                    </div>
+                  )}
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -616,6 +598,20 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Others (Multiple files allowed)
                   </label>
+                  {subAdmin.otherDocsUrls && subAdmin.otherDocsUrls.length > 0 && (
+                    <div className="mb-2 p-2 bg-gray-50 rounded border">
+                      <p className="text-sm text-gray-700">Current files:</p>
+                      <ul className="list-disc list-inside text-sm text-gray-600">
+                        {subAdmin.otherDocsUrls.map((url: string, index: number) => (
+                          <li key={index}>
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
+                              Document {index + 1}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <input
                     type="file"
                     multiple
@@ -701,10 +697,10 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Creating Sub-Admin...
+                  Updating Sub-Admin...
                 </div>
               ) : (
-                'Create Sub-Admin'
+                'Update Sub-Admin'
               )}
             </motion.button>
             <motion.button
@@ -723,4 +719,4 @@ const CreateSubAdminForm = ({ isOpen, onClose, onSuccess }: CreateSubAdminFormPr
   )
 }
 
-export default CreateSubAdminForm
+export default EditSubAdminForm

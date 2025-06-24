@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
 import FloatingParticles from '@/components/animations/FloatingParticles'
 import CreateSubAdminForm from '@/components/forms/CreateSubAdminForm'
+import EditSubAdminForm from '@/components/forms/EditSubAdminForm'
 
 // Sub-admin interface
 interface SubAdmin {
@@ -118,13 +119,10 @@ export default function SettingsPage() {
   }
 
   const handleUpdateSubAdmin = () => {
-    if (selectedSubAdmin) {
-      setSubAdmins(subAdmins.map(sa =>
-        sa.id === selectedSubAdmin.id ? selectedSubAdmin : sa
-      ))
-      setShowEditModal(false)
-      setSelectedSubAdmin(null)
-    }
+    // Refresh sub-admins list after successful update
+    fetchSubAdmins()
+    setShowEditModal(false)
+    setSelectedSubAdmin(null)
   }
 
   const handleToggleStatus = (id: string) => {
@@ -139,14 +137,7 @@ export default function SettingsPage() {
     }
   }
 
-  const togglePermission = (permission: string) => {
-    if (selectedSubAdmin) {
-      const updatedPermissions = selectedSubAdmin.permissions.includes(permission)
-        ? selectedSubAdmin.permissions.filter(p => p !== permission)
-        : [...selectedSubAdmin.permissions, permission]
-      setSelectedSubAdmin({ ...selectedSubAdmin, permissions: updatedPermissions })
-    }
-  }
+
 
   // Only show settings if user is admin
   if (userRole !== 'ADMIN') {
@@ -384,75 +375,13 @@ export default function SettingsPage() {
           onSuccess={handleCreateSubAdminSuccess}
         />
 
-        {/* Edit Sub-Admin Modal */}
-        {showEditModal && selectedSubAdmin && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Sub-Admin</h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={selectedSubAdmin.name}
-                    onChange={(e) => setSelectedSubAdmin({ ...selectedSubAdmin, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={selectedSubAdmin.email}
-                    onChange={(e) => setSelectedSubAdmin({ ...selectedSubAdmin, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {availablePermissions.filter(p => p.key !== 'MANAGE_USERS').map(permission => (
-                      <label key={permission.key} className="flex items-start space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedSubAdmin.permissions.includes(permission.key)}
-                          onChange={() => togglePermission(permission.key)}
-                          className="mt-1"
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{permission.label}</div>
-                          <div className="text-xs text-gray-500">{permission.description}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={handleUpdateSubAdmin}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
-                >
-                  Update Sub-Admin
-                </button>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
+        {/* Edit Sub-Admin Form */}
+        <EditSubAdminForm
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={handleUpdateSubAdmin}
+          subAdmin={selectedSubAdmin}
+        />
       </PageTransition>
     </DashboardLayout>
   )
