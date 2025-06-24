@@ -38,6 +38,8 @@ textarea {
   color: #111827 !important;
 }
 
+
+
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="tel"]:focus,
@@ -49,17 +51,23 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
 
+
+
 /* Ensure form labels are visible */
 label {
   color: #374151 !important;
   font-weight: 500 !important;
 }
 
+
+
 /* Form container styling */
 .form-container {
   background: white !important;
   color: #111827 !important;
 }
+
+
 
 /* Specific input field styling for better visibility */
 .w-full.px-4.py-3.border {

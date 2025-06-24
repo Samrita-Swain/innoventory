@@ -72,20 +72,20 @@ const AdminDashboard = ({ dashboardData }: AdminDashboardProps) => {
       subtitle: 'Active vendors'
     },
     {
-      title: 'Total Clients',
-      value: dashboardData.totalCustomers,
-      icon: FileText,
-      color: 'bg-purple-500',
-      onClick: () => router.push('/dashboard/customers'),
-      subtitle: 'All registered clients'
-    },
-    {
       title: 'Total Orders',
       value: dashboardData.totalOrders || (dashboardData.totalIPsRegistered + dashboardData.totalIPsClosed),
+      icon: FileText,
+      color: 'bg-purple-500',
+      onClick: () => router.push('/dashboard/orders'),
+      subtitle: 'All orders in system'
+    },
+    {
+      title: 'Completed Orders',
+      value: dashboardData.totalIPsRegistered,
       icon: ShoppingCart,
       color: 'bg-orange-500',
       onClick: () => router.push('/dashboard/orders'),
-      subtitle: 'All orders placed'
+      subtitle: 'Successfully finished'
     }
   ]
 
@@ -160,8 +160,8 @@ const AdminDashboard = ({ dashboardData }: AdminDashboardProps) => {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Overview of your IP management system</p>
+          <h1 className="text-3xl font-bold text-black">Admin Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Overview of your IP management system</p>
         </div>
 
         <div className="flex items-center space-x-2">

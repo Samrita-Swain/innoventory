@@ -12,16 +12,26 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
 
-    // Verify JWT token with demo secret
+    // Verify JWT token with demo secret or handle demo token
     let payload
-    try {
-      payload = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    if (token === 'demo-token') {
+      // Handle demo authentication
+      payload = {
+        role: 'ADMIN',
+        userId: 'demo-admin-id',
+        email: 'admin@innoventory.com',
+        name: 'John Admin'
+      }
+    } else {
+      try {
+        payload = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret-key') as any
+      } catch (error) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
 
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      if (!payload) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
     }
 
     const { searchParams } = new URL(request.url)
@@ -80,6 +90,7 @@ export async function GET(request: NextRequest) {
       const [
         totalCustomers,
         totalVendors,
+        totalOrders,
         totalIPsRegistered,
         totalIPsClosed,
         customersByCountry,
@@ -98,6 +109,9 @@ export async function GET(request: NextRequest) {
         prisma.vendor.count({
           where: { isActive: true }
         }).catch(() => 0),
+
+        // Total orders
+        prisma.order.count().catch(() => 0),
 
         // Total IPs registered
         prisma.order.count({
@@ -173,6 +187,7 @@ export async function GET(request: NextRequest) {
       const dashboardData = {
         totalCustomers,
         totalVendors,
+        totalOrders,
         totalIPsRegistered,
         totalIPsClosed,
         customersByCountry: customersByCountry.map(item => ({

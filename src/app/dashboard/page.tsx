@@ -141,30 +141,36 @@ export default function DashboardPage() {
             email: storedRole === 'ADMIN' ? 'admin@innoventory.com' : 'subadmin@innoventory.com'
           })
 
-          // For demo mode, set empty dashboard data
-          setDashboardData(storedRole === 'ADMIN' ? {
-            totalCustomers: 0,
-            totalVendors: 0,
-            totalIPsRegistered: 0,
-            totalIPsClosed: 0,
-            totalOrders: 0,
-            customersByCountry: [],
-            vendorsByCountry: [],
-            workDistribution: [],
-            pendingWork: [],
-            pendingPayments: [],
-            yearlyTrends: []
-          } : {
-            assignedCustomers: 0,
-            assignedVendors: 0,
-            totalOrders: 0,
-            ordersYetToStart: 0,
-            ordersPendingWithClient: 0,
-            ordersCompleted: 0,
-            assignedPendingOrders: [],
-            recentActivities: [],
-            monthlyProgress: []
-          })
+          // Try to fetch real dashboard data even in demo mode
+          try {
+            await fetchDashboardData('demo-token')
+          } catch (error) {
+            console.error('Failed to fetch dashboard data in demo mode:', error)
+            // Fallback to empty dashboard data if API fails
+            setDashboardData(storedRole === 'ADMIN' ? {
+              totalCustomers: 0,
+              totalVendors: 0,
+              totalIPsRegistered: 0,
+              totalIPsClosed: 0,
+              totalOrders: 0,
+              customersByCountry: [],
+              vendorsByCountry: [],
+              workDistribution: [],
+              pendingWork: [],
+              pendingPayments: [],
+              yearlyTrends: []
+            } : {
+              assignedCustomers: 0,
+              assignedVendors: 0,
+              totalOrders: 0,
+              ordersYetToStart: 0,
+              ordersPendingWithClient: 0,
+              ordersCompleted: 0,
+              assignedPendingOrders: [],
+              recentActivities: [],
+              monthlyProgress: []
+            })
+          }
         } else {
           // No authentication found, redirect to login
           router.push('/login')

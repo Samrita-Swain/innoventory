@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma, isDatabaseConnected } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
-
-const prisma = new PrismaClient()
 
 // GET - Fetch all type of work
 export async function GET(request: NextRequest) {
@@ -21,6 +19,13 @@ export async function GET(request: NextRequest) {
     } catch (jwtError) {
       console.error('JWT verification failed:', jwtError)
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // Check if database is connected
+    const dbConnected = await isDatabaseConnected()
+    if (!dbConnected || !prisma) {
+      console.log('Database not connected, returning empty array')
+      return NextResponse.json([])
     }
 
     const typeOfWorkItems = await prisma.typeOfWork.findMany({
@@ -69,6 +74,25 @@ export async function POST(request: NextRequest) {
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+
+    // Check if database is connected
+    const dbConnected = await isDatabaseConnected()
+    if (!dbConnected || !prisma) {
+      console.log('Database not connected, returning demo response')
+      return NextResponse.json({
+        id: 'demo-' + Date.now(),
+        name,
+        description,
+        isActive,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: {
+          id: 'demo-user',
+          name: 'Demo User',
+          email: 'demo@example.com'
+        }
+      }, { status: 201 })
     }
 
     // Check if type of work with same name already exists
