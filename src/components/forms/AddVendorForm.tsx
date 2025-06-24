@@ -182,6 +182,8 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
     if (!formData.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
 
+    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
+
     if (!formData.country) newErrors.country = 'Country is required'
 
     // Company type specific validation (only if company type is selected)
@@ -483,7 +485,7 @@ const AddVendorForm = ({ isOpen, onClose, onSuccess }: AddVendorFormProps) => {
               <div className="min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Phone className="inline h-4 w-4 mr-1" />
-                  Phone Number
+                  Phone Number *
                 </label>
                 <input
                   type="tel"

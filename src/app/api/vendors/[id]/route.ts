@@ -235,7 +235,7 @@ export async function PUT(
     const { id: vendorId } = await params
     const body = await request.json()
     const {
-      name, email, phone, company, address, country, specialization, isActive,
+      name, email, phone, company, address, country, specialization, isActive, rating,
       // Comprehensive fields
       onboardingDate, companyType, companyName, individualName,
       city, state, username, gstNumber, startupBenefits, typeOfWork
@@ -305,6 +305,7 @@ export async function PUT(
           country,
           specialization: specialization || (typeOfWork && typeOfWork.length > 0 ? typeOfWork.join(', ') : null),
           isActive: isActive !== undefined ? isActive : true,
+          rating: rating !== undefined ? rating : undefined,
           // Comprehensive fields
           onboardingDate: onboardingDate && onboardingDate.trim()
             ? new Date(onboardingDate)

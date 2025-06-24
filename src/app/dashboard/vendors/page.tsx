@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Building2, Plus, Search, Edit, Trash2, Eye, Star, X } from 'lucide-react'
+import { Building2, Plus, Search, Edit, Trash2, Eye, Star, X, FileText, Download, User, Phone, Mail, MapPin, Calendar, Users, Briefcase, Shield, Award } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
 import FloatingParticles from '@/components/animations/FloatingParticles'
@@ -22,6 +22,7 @@ interface Vendor {
   rating?: number
   isActive: boolean
   createdAt: string
+  updatedAt?: string
   _count?: {
     orders: number
   }
@@ -37,6 +38,12 @@ interface Vendor {
   startupBenefits?: string
   typeOfWork?: string[]
   pointsOfContact?: string
+  // Document fields
+  gstFileUrl?: string
+  ndaFileUrl?: string
+  agreementFileUrl?: string
+  companyLogoUrl?: string
+  otherDocsUrls?: string[]
 }
 
 export default function VendorsPage() {
@@ -231,6 +238,140 @@ export default function VendorsPage() {
         className={`h-4 w-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
       />
     ))
+  }
+
+  // EditableRating component
+  const EditableRating = ({ vendorId, currentRating, onRatingUpdate }: {
+    vendorId: string
+    currentRating: number
+    onRatingUpdate: (rating: number) => void
+  }) => {
+    const [isEditing, setIsEditing] = useState(false)
+    const [tempRating, setTempRating] = useState(currentRating)
+    const [isUpdating, setIsUpdating] = useState(false)
+    const [hasUserInteracted, setHasUserInteracted] = useState(false)
+
+    // Sync tempRating with currentRating when it changes
+    useEffect(() => {
+      setTempRating(currentRating)
+    }, [currentRating])
+
+    const handleStarClick = (rating: number) => {
+      setTempRating(rating)
+    }
+
+    const handleSave = async () => {
+      if (tempRating === currentRating) {
+        setIsEditing(false)
+        return
+      }
+
+      setIsUpdating(true)
+      setHasUserInteracted(true)
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          alert('Please login again')
+          return
+        }
+
+        const response = await fetch(`/api/vendors/${vendorId}/rating`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ rating: tempRating })
+        })
+
+        if (response.ok) {
+          onRatingUpdate(tempRating)
+          setIsEditing(false)
+        } else {
+          // If rating API fails, try the main vendor update API as fallback
+          if (response.status === 404) {
+            console.log('Rating API not found, using fallback vendor update API')
+            // This is a fallback - should not normally be needed
+            alert('Rating update temporarily unavailable. Please use the edit vendor form.')
+          } else {
+            const errorData = await response.json()
+            if (hasUserInteracted) {
+              alert(errorData.error || 'Failed to update rating')
+            }
+          }
+          setTempRating(currentRating) // Reset to original
+        }
+      } catch (error) {
+        console.error('Error updating rating:', error)
+        if (hasUserInteracted) {
+          alert('Failed to update rating')
+        }
+        setTempRating(currentRating) // Reset to original
+      } finally {
+        setIsUpdating(false)
+      }
+    }
+
+    const handleCancel = () => {
+      setTempRating(currentRating)
+      setIsEditing(false)
+    }
+
+    if (isEditing) {
+      return (
+        <div className="flex items-center space-x-2">
+          <div className="flex">
+            {Array.from({ length: 5 }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => handleStarClick(i + 1)}
+                disabled={isUpdating}
+                className="focus:outline-none disabled:opacity-50"
+              >
+                <Star
+                  className={`h-4 w-4 cursor-pointer transition-colors ${
+                    i < tempRating ? 'text-yellow-400 fill-current' : 'text-gray-300 hover:text-yellow-200'
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+          <span className="text-sm text-gray-900 min-w-[2rem]">{tempRating.toFixed(1)}</span>
+          <div className="flex space-x-1">
+            <button
+              onClick={handleSave}
+              disabled={isUpdating}
+              className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded bg-green-50 hover:bg-green-100 disabled:opacity-50"
+            >
+              {isUpdating ? '...' : '✓'}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={isUpdating}
+              className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded bg-red-50 hover:bg-red-100 disabled:opacity-50"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors"
+        onClick={() => {
+          setIsEditing(true)
+          setHasUserInteracted(true)
+        }}
+        title="Click to edit rating"
+      >
+        <div className="flex mr-2">
+          {renderStars(currentRating)}
+        </div>
+        <span className="text-sm text-gray-900">{currentRating?.toFixed(1) || 'N/A'}</span>
+      </div>
+    )
   }
 
   return (
@@ -457,12 +598,15 @@ export default function VendorsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex mr-2">
-                              {renderStars(vendor.rating || 0)}
-                            </div>
-                            <span className="text-sm text-gray-900">{vendor.rating?.toFixed(1) || 'N/A'}</span>
-                          </div>
+                          <EditableRating
+                            vendorId={vendor.id}
+                            currentRating={vendor.rating || 0}
+                            onRatingUpdate={(newRating) => {
+                              setVendors(prev => prev.map(v =>
+                                v.id === vendor.id ? { ...v, rating: newRating } : v
+                              ))
+                            }}
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{vendor._count?.orders || 0}</div>
@@ -634,65 +778,282 @@ export default function VendorsPage() {
                         {new Date(selectedVendor.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                  </div>
-                </div>
 
-                {/* Comprehensive Fields */}
-                {(selectedVendor.companyType || selectedVendor.gstNumber || selectedVendor.typeOfWork?.length) && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Comprehensive Details
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {selectedVendor.onboardingDate && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">Onboarding Date</label>
-                          <p className="text-gray-900">
-                            {new Date(selectedVendor.onboardingDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                      )}
-
-                      {selectedVendor.companyType && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">Company Type</label>
-                          <p className="text-gray-900">{selectedVendor.companyType}</p>
-                        </div>
-                      )}
-
-                      {selectedVendor.gstNumber && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">GST Number</label>
-                          <p className="text-gray-900">{selectedVendor.gstNumber}</p>
-                        </div>
-                      )}
-
-                      {selectedVendor.username && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">Username</label>
-                          <p className="text-gray-900">{selectedVendor.username}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedVendor.typeOfWork && selectedVendor.typeOfWork.length > 0 && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-500 mb-2">Type of Work</label>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedVendor.typeOfWork.map((work, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
-                            >
-                              {work}
-                            </span>
-                          ))}
-                        </div>
+                    {selectedVendor.updatedAt && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Last Updated</label>
+                        <p className="text-gray-900">
+                          {new Date(selectedVendor.updatedAt).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                   </div>
-                )}
+                </div>
+
+                {/* Company Details Section */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Briefcase className="mr-2 h-5 w-5 text-blue-600" />
+                    Company Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Company Type</label>
+                      <p className="text-gray-900">{selectedVendor.companyType || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Company Name</label>
+                      <p className="text-gray-900">{selectedVendor.companyName || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Individual Name</label>
+                      <p className="text-gray-900">{selectedVendor.individualName || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">GST Number</label>
+                      <p className="text-gray-900">{selectedVendor.gstNumber || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">City</label>
+                      <p className="text-gray-900">{selectedVendor.city || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">State</label>
+                      <p className="text-gray-900">{selectedVendor.state || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Username</label>
+                      <p className="text-gray-900">{selectedVendor.username || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Onboarding Date</label>
+                      <p className="text-gray-900">
+                        {selectedVendor.onboardingDate
+                          ? new Date(selectedVendor.onboardingDate).toLocaleDateString()
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-500">Startup Benefits</label>
+                    <p className="text-gray-900">{selectedVendor.startupBenefits || 'N/A'}</p>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Type of Work</label>
+                    {selectedVendor.typeOfWork && selectedVendor.typeOfWork.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedVendor.typeOfWork.map((work, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
+                          >
+                            {work}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-900">N/A</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Points of Contact Section */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Users className="mr-2 h-5 w-5 text-green-600" />
+                    Points of Contact
+                  </h3>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    {selectedVendor.pointsOfContact ? (
+                      (() => {
+                        try {
+                          const contacts = JSON.parse(selectedVendor.pointsOfContact)
+                          if (Array.isArray(contacts) && contacts.length > 0) {
+                            return contacts.map((contact, index) => (
+                              <div key={index} className="mb-4 last:mb-0 p-3 bg-white rounded border">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">Name</label>
+                                    <p className="text-sm text-gray-900">{contact.name || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">Phone</label>
+                                    <p className="text-sm text-gray-900">{contact.phone || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">Email</label>
+                                    <p className="text-sm text-gray-900">{contact.email || 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          } else if (contacts && typeof contacts === 'object') {
+                            return (
+                              <div className="p-3 bg-white rounded border">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">Name</label>
+                                    <p className="text-sm text-gray-900">{contacts.name || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">Phone</label>
+                                    <p className="text-sm text-gray-900">{contacts.phone || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-500">Email</label>
+                                    <p className="text-sm text-gray-900">{contacts.email || 'N/A'}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          } else {
+                            return (
+                              <div className="p-3 bg-white rounded border">
+                                <p className="text-sm text-gray-900">No contact information available</p>
+                              </div>
+                            )
+                          }
+                        } catch (e) {
+                          return (
+                            <div className="p-3 bg-white rounded border">
+                              <p className="text-sm text-gray-900">{selectedVendor.pointsOfContact}</p>
+                            </div>
+                          )
+                        }
+                      })()
+                    ) : (
+                      <div className="p-3 bg-white rounded border">
+                        <p className="text-sm text-gray-900">No contact information available</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Documents Section */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <FileText className="mr-2 h-5 w-5 text-purple-600" />
+                    Documents
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center">
+                        <FileText className="h-5 w-5 text-blue-600 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">GST File</span>
+                      </div>
+                      {selectedVendor.gstFileUrl ? (
+                        <a
+                          href={selectedVendor.gstFileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-500">Not uploaded</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center">
+                        <Shield className="h-5 w-5 text-green-600 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">NDA File</span>
+                      </div>
+                      {selectedVendor.ndaFileUrl ? (
+                        <a
+                          href={selectedVendor.ndaFileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-500">Not uploaded</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center">
+                        <FileText className="h-5 w-5 text-orange-600 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">Agreement File</span>
+                      </div>
+                      {selectedVendor.agreementFileUrl ? (
+                        <a
+                          href={selectedVendor.agreementFileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-500">Not uploaded</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center">
+                        <Award className="h-5 w-5 text-purple-600 mr-2" />
+                        <span className="text-sm font-medium text-gray-900">Company Logo</span>
+                      </div>
+                      {selectedVendor.companyLogoUrl ? (
+                        <a
+                          href={selectedVendor.companyLogoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-500">Not uploaded</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Other Documents</label>
+                    {selectedVendor.otherDocsUrls && selectedVendor.otherDocsUrls.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {selectedVendor.otherDocsUrls.map((docUrl, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                            <div className="flex items-center">
+                              <FileText className="h-4 w-4 text-gray-600 mr-2" />
+                              <span className="text-sm text-gray-900">Document {index + 1}</span>
+                            </div>
+                            <a
+                              href={docUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              <Download className="h-3 w-3" />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <p className="text-sm text-gray-500">No additional documents uploaded</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="flex justify-end mt-6 pt-6 border-t border-gray-200">
                   <button

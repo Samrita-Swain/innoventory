@@ -518,7 +518,7 @@ const AddCustomerForm = ({ isOpen, onClose, onSuccess }: AddCustomerFormProps) =
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Phone className="inline w-4 h-4 mr-2" />
-                  Company&apos;s Number
+                  Company&apos;s Phone Number
                 </label>
                 <input
                   type="tel"

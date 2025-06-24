@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { X, User, Mail, Phone, Building, MapPin, Globe, Edit, Calendar } from 'lucide-react'
+import { X, User, Mail, Phone, Building, MapPin, Globe, Edit, Calendar, Star, Upload, FileText, Plus, Trash2, Users } from 'lucide-react'
 
 interface Vendor {
   id: string
@@ -13,6 +13,7 @@ interface Vendor {
   address?: string
   country: string
   specialization?: string
+  rating?: number
   isActive: boolean
   createdAt: string
   _count?: {
@@ -29,6 +30,22 @@ interface Vendor {
   gstNumber?: string
   startupBenefits?: string
   typeOfWork?: string[]
+  pointsOfContact?: string
+  // Document fields
+  gstFileUrl?: string
+  ndaFileUrl?: string
+  agreementFileUrl?: string
+  companyLogoUrl?: string
+  otherDocsUrls?: string[]
+}
+
+interface PointOfContact {
+  id: string
+  name: string
+  phone: string
+  countryCode: string
+  email: string
+  areaOfExpertise: string
 }
 
 interface EditVendorFormProps {
@@ -38,28 +55,50 @@ interface EditVendorFormProps {
   vendor: Vendor
 }
 
-const countries = [
-  'United States', 'United Kingdom', 'Germany', 'Canada', 'Australia',
-  'France', 'Italy', 'Spain', 'Netherlands', 'Japan', 'India', 'Brazil'
-]
+import { globalLocationData } from '../../data/globalLocationData'
+
+// Use the comprehensive global location data
+const locationData = globalLocationData
+const countries = Object.keys(locationData)
 
 const companyTypes = [
-  'Startup',
-  'DPIIT',
+  'Pvt. Limited',
   'MSME',
-  'Small Entity',
-  'Large Entity',
-  'Individual'
+  'Firm',
+  'Individual',
+  'Partnership',
+  'LLP'
 ]
 
 const workTypes = [
-  'Trademark Registration',
-  'Patent Filing',
-  'Copyright Registration',
-  'Design Registration',
-  'IP Consultation',
-  'Legal Services',
-  'Research & Analysis'
+  'Patents',
+  'Trademarks',
+  'Copyrights',
+  'Designs',
+  'Consultancy',
+  'Audit Service',
+  'Agreement drafting'
+]
+
+const areasOfExpertise = [
+  'Patents',
+  'Trademarks',
+  'Copyrights',
+  'Designs',
+  'Consultancy',
+  'Audit Service',
+  'Agreement drafting'
+]
+
+const countryCodes = [
+  { code: '+91', country: 'India' },
+  { code: '+1', country: 'USA/Canada' },
+  { code: '+44', country: 'UK' },
+  { code: '+49', country: 'Germany' },
+  { code: '+33', country: 'France' },
+  { code: '+81', country: 'Japan' },
+  { code: '+86', country: 'China' },
+  { code: '+61', country: 'Australia' }
 ]
 
 const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormProps) => {
@@ -71,6 +110,7 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
     address: '',
     country: '',
     specialization: '',
+    rating: 0,
     isActive: true,
     // Comprehensive fields
     onboardingDate: '',
@@ -87,6 +127,26 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
 
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [pointsOfContact, setPointsOfContact] = useState<PointOfContact[]>([])
+  const [files, setFiles] = useState({
+    gstFile: null as File | null,
+    nda: null as File | null,
+    agreement: null as File | null,
+    companyLogo: null as File | null,
+    otherDocuments: [] as File[]
+  })
+
+  // Get available states for selected country (cascading behavior)
+  const getAvailableStates = () => {
+    if (!formData.country || !locationData[formData.country]) return []
+    return Object.keys(locationData[formData.country])
+  }
+
+  // Get available cities for selected country and state (cascading behavior)
+  const getAvailableCities = () => {
+    if (!formData.country || !formData.state || !locationData[formData.country]?.[formData.state]) return []
+    return locationData[formData.country][formData.state]
+  }
 
   // Pre-populate form with vendor data
   useEffect(() => {
@@ -99,6 +159,7 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
         address: vendor.address || '',
         country: vendor.country || '',
         specialization: vendor.specialization || '',
+        rating: vendor.rating || 0,
         isActive: vendor.isActive,
         // Comprehensive fields
         onboardingDate: vendor.onboardingDate
@@ -114,6 +175,23 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
         startupBenefits: vendor.startupBenefits || '',
         typeOfWork: vendor.typeOfWork || []
       })
+
+      // Parse and set points of contact
+      if (vendor.pointsOfContact) {
+        try {
+          const contacts = JSON.parse(vendor.pointsOfContact)
+          if (Array.isArray(contacts)) {
+            setPointsOfContact(contacts)
+          } else if (contacts && typeof contacts === 'object') {
+            setPointsOfContact([contacts])
+          }
+        } catch (e) {
+          console.error('Error parsing points of contact:', e)
+          setPointsOfContact([])
+        }
+      } else {
+        setPointsOfContact([])
+      }
     }
   }, [vendor])
 
@@ -124,7 +202,23 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
       const checked = (e.target as HTMLInputElement).checked
       setFormData(prev => ({ ...prev, [name]: checked }))
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }))
+      // Handle cascading dropdown logic
+      if (name === 'country') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          state: '', // Reset state when country changes
+          city: ''   // Reset city when country changes
+        }))
+      } else if (name === 'state') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          city: ''   // Reset city when state changes
+        }))
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value }))
+      }
     }
 
     // Clear error when user starts typing
@@ -140,6 +234,32 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
         ? prev.typeOfWork.filter(type => type !== workType)
         : [...prev.typeOfWork, workType]
     }))
+  }
+
+  const handleFileChange = (field: string, file: File | null) => {
+    setFiles(prev => ({ ...prev, [field]: file }))
+  }
+
+  const addPointOfContact = () => {
+    const newContact: PointOfContact = {
+      id: Date.now().toString(),
+      name: '',
+      phone: '',
+      countryCode: '+91',
+      email: '',
+      areaOfExpertise: ''
+    }
+    setPointsOfContact(prev => [...prev, newContact])
+  }
+
+  const removePointOfContact = (id: string) => {
+    setPointsOfContact(prev => prev.filter(contact => contact.id !== id))
+  }
+
+  const updatePointOfContact = (id: string, field: keyof PointOfContact, value: string) => {
+    setPointsOfContact(prev => prev.map(contact =>
+      contact.id === id ? { ...contact, [field]: value } : contact
+    ))
   }
 
   const validateForm = () => {
@@ -412,8 +532,9 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                 </div>
               </div>
 
-              {/* Location */}
+              {/* Location - Cascading Dropdowns */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                {/* Country - First */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Globe className="inline w-4 h-4 mr-2" />
@@ -436,31 +557,53 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                     <p className="mt-1 text-sm text-red-600">{errors.country}</p>
                   )}
                 </div>
+
+                {/* State - Second (depends on country) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     State
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="state"
                     value={formData.state}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Enter state"
-                  />
+                    disabled={!formData.country}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                      !formData.country ? 'bg-gray-100 cursor-not-allowed' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select state</option>
+                    {getAvailableStates().map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                  {!formData.country && (
+                    <p className="mt-1 text-xs text-gray-500">Please select a country first</p>
+                  )}
                 </div>
+
+                {/* City - Third (depends on country and state) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     City
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Enter city"
-                  />
+                    disabled={!formData.country || !formData.state}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                      !formData.country || !formData.state ? 'bg-gray-100 cursor-not-allowed' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select city</option>
+                    {getAvailableCities().map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                  {(!formData.country || !formData.state) && (
+                    <p className="mt-1 text-xs text-gray-500">Please select country and state first</p>
+                  )}
                 </div>
               </div>
 
@@ -510,7 +653,7 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                 </div>
               </div>
 
-              {/* Specialization and Startup Benefits */}
+              {/* Specialization and Rating */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -527,17 +670,36 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Startup Benefits
+                    <Star className="inline w-4 h-4 mr-2" />
+                    Rating (0-5)
                   </label>
                   <input
-                    type="text"
-                    name="startupBenefits"
-                    value={formData.startupBenefits}
+                    type="number"
+                    name="rating"
+                    value={formData.rating}
                     onChange={handleChange}
+                    min="0"
+                    max="5"
+                    step="0.1"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Enter startup benefits"
+                    placeholder="Enter rating (0-5)"
                   />
                 </div>
+              </div>
+
+              {/* Startup Benefits */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Startup Benefits
+                </label>
+                <input
+                  type="text"
+                  name="startupBenefits"
+                  value={formData.startupBenefits}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Enter startup benefits"
+                />
               </div>
 
               {/* Type of Work */}
@@ -573,6 +735,254 @@ const EditVendorForm = ({ isOpen, onClose, onSuccess, vendor }: EditVendorFormPr
                   <span className="text-sm font-medium text-gray-700">Active Vendor</span>
                 </label>
               </div>
+            </div>
+
+            {/* Points of Contact */}
+            {formData.companyType && formData.companyType !== 'Individual' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 flex-1 flex items-center">
+                    <Users className="mr-2 h-5 w-5 text-green-600" />
+                    Points of Contact
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addPointOfContact}
+                    className="ml-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Contact
+                  </button>
+                </div>
+
+                {pointsOfContact.map((contact, index) => (
+                  <div key={contact.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium text-gray-900">Contact {index + 1}</h4>
+                      <button
+                        type="button"
+                        onClick={() => removePointOfContact(contact.id)}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Contact Name */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Contact Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={contact.name}
+                          onChange={(e) => updatePointOfContact(contact.id, 'name', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                          placeholder="Enter contact name"
+                        />
+                      </div>
+
+                      {/* Contact Email */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Contact Email *
+                        </label>
+                        <input
+                          type="email"
+                          value={contact.email}
+                          onChange={(e) => updatePointOfContact(contact.id, 'email', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                          placeholder="Enter contact email"
+                        />
+                      </div>
+
+                      {/* Contact Phone */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone Number *
+                        </label>
+                        <div className="flex">
+                          <select
+                            value={contact.countryCode}
+                            onChange={(e) => updatePointOfContact(contact.id, 'countryCode', e.target.value)}
+                            className="px-2 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors bg-gray-50 flex-shrink-0"
+                          >
+                            {countryCodes.map(cc => (
+                              <option key={cc.code} value={cc.code}>
+                                {cc.code}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="tel"
+                            value={contact.phone}
+                            onChange={(e) => updatePointOfContact(contact.id, 'phone', e.target.value)}
+                            className="flex-1 px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                            placeholder="Enter phone number"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Area of Expertise */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Area of Expertise *
+                        </label>
+                        <select
+                          value={contact.areaOfExpertise}
+                          onChange={(e) => updatePointOfContact(contact.id, 'areaOfExpertise', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                        >
+                          <option value="">Select area of expertise</option>
+                          {areasOfExpertise.map(area => (
+                            <option key={area} value={area}>{area}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Document Uploads */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 flex items-center">
+              <FileText className="mr-2 h-5 w-5 text-purple-600" />
+              Document Uploads
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              {/* GST File */}
+              <div className="min-w-0">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Upload className="inline h-4 w-4 mr-1" />
+                  GST File
+                </label>
+                {vendor.gstFileUrl && (
+                  <div className="mb-2 p-2 bg-blue-50 rounded border">
+                    <p className="text-sm text-blue-700">Current file:
+                      <a href={vendor.gstFileUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View GST File
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={(e) => handleFileChange('gstFile', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG, DOC, DOCX</p>
+              </div>
+
+              {/* NDA */}
+              <div className="min-w-0">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FileText className="inline h-4 w-4 mr-1" />
+                  NDA Document
+                </label>
+                {vendor.ndaFileUrl && (
+                  <div className="mb-2 p-2 bg-green-50 rounded border">
+                    <p className="text-sm text-green-700">Current file:
+                      <a href={vendor.ndaFileUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View NDA File
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => handleFileChange('nda', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX</p>
+              </div>
+
+              {/* Agreement */}
+              <div className="min-w-0">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FileText className="inline h-4 w-4 mr-1" />
+                  Agreement Document
+                </label>
+                {vendor.agreementFileUrl && (
+                  <div className="mb-2 p-2 bg-orange-50 rounded border">
+                    <p className="text-sm text-orange-700">Current file:
+                      <a href={vendor.agreementFileUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View Agreement File
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => handleFileChange('agreement', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX</p>
+              </div>
+
+              {/* Company Logo */}
+              <div className="min-w-0">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Upload className="inline h-4 w-4 mr-1" />
+                  Company Logo
+                </label>
+                {vendor.companyLogoUrl && (
+                  <div className="mb-2 p-2 bg-purple-50 rounded border">
+                    <p className="text-sm text-purple-700">Current file:
+                      <a href={vendor.companyLogoUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View Logo
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.svg"
+                  onChange={(e) => handleFileChange('companyLogo', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Accepted formats: JPG, PNG, SVG</p>
+              </div>
+            </div>
+
+            {/* Other Documents */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Upload className="inline h-4 w-4 mr-1" />
+                Other Documents
+              </label>
+              {vendor.otherDocsUrls && vendor.otherDocsUrls.length > 0 && (
+                <div className="mb-2 p-2 bg-gray-50 rounded border">
+                  <p className="text-sm text-gray-700">Current files:</p>
+                  <ul className="list-disc list-inside text-sm text-gray-600">
+                    {vendor.otherDocsUrls.map((url, index) => (
+                      <li key={index}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
+                          Document {index + 1}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={(e) => {
+                  const fileList = Array.from(e.target.files || [])
+                  setFiles(prev => ({ ...prev, otherDocuments: fileList }))
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
+              />
+              <p className="text-xs text-gray-500 mt-1">Multiple files allowed. Accepted formats: PDF, JPG, PNG, DOC, DOCX</p>
             </div>
           </div>
 

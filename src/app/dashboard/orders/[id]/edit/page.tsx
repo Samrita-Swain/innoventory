@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Save, X } from 'lucide-react'
+import { ArrowLeft, Save, X, Calendar, Upload, FileText, Hash, IndianRupee, AlertCircle, MessageSquare } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import PageTransition from '@/components/animations/PageTransition'
 
@@ -22,6 +22,23 @@ interface OrderData {
   customerId: string
   vendorId: string
   assignedToId?: string
+  // Comprehensive vendor fields
+  onboardingDate?: string
+  currentStatus?: string
+  statusComment?: string
+  statusChangeDate?: string
+  workCompletionExpected?: string
+  documentsProvidedUrl?: string
+  invoiceFromVendorUrl?: string
+  amountToBePaid?: number
+  amountPaidToVendor?: number
+  // Comprehensive order fields
+  dateOfCompletion?: string
+  countryToBeImplemented?: string
+  workDocumentsUrl?: string
+  applicationDairyNumber?: string
+  dateOfFilingAtPO?: string
+  lawyerReferenceNumber?: string
 }
 
 export default function EditOrderPage() {
@@ -34,6 +51,20 @@ export default function EditOrderPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [userRole, setUserRole] = useState<'ADMIN' | 'SUB_ADMIN'>('ADMIN')
 
+  // Vendor status options
+  const vendorStatusOptions = [
+    { value: 'yet_to_start', label: 'Yet to start' },
+    { value: 'pending_with_client', label: 'Pending with client' },
+    { value: 'pending_with_vendor', label: 'Pending with Vendor' },
+    { value: 'blocked', label: 'Blocked' },
+    { value: 'completed', label: 'Completed' }
+  ]
+
+  // File handling functions
+  const handleFileChange = (field: string, file: File | null) => {
+    setFiles(prev => ({ ...prev, [field]: file }))
+  }
+
   // Form data
   const [formData, setFormData] = useState({
     title: '',
@@ -44,7 +75,28 @@ export default function EditOrderPage() {
     country: '',
     amount: 0,
     paidAmount: 0,
-    dueDate: ''
+    dueDate: '',
+    // Comprehensive vendor fields
+    onboardingDate: '',
+    currentStatus: '',
+    statusComment: '',
+    statusChangeDate: '',
+    workCompletionExpected: '',
+    amountToBePaid: 0,
+    amountPaidToVendor: 0,
+    // Comprehensive order fields
+    dateOfCompletion: '',
+    countryToBeImplemented: '',
+    applicationDairyNumber: '',
+    dateOfFilingAtPO: '',
+    lawyerReferenceNumber: ''
+  })
+
+  // File states for document uploads
+  const [files, setFiles] = useState({
+    documentsProvided: null as File | null,
+    invoiceFromVendor: null as File | null,
+    workDocuments: null as File | null
   })
 
   useEffect(() => {
@@ -90,7 +142,21 @@ export default function EditOrderPage() {
           country: data.country || '',
           amount: data.amount || 0,
           paidAmount: data.paidAmount || 0,
-          dueDate: data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : ''
+          dueDate: data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : '',
+          // Comprehensive vendor fields
+          onboardingDate: data.onboardingDate ? new Date(data.onboardingDate).toISOString().split('T')[0] : '',
+          currentStatus: data.currentStatus || '',
+          statusComment: data.statusComment || '',
+          statusChangeDate: data.statusChangeDate ? new Date(data.statusChangeDate).toISOString().split('T')[0] : '',
+          workCompletionExpected: data.workCompletionExpected ? new Date(data.workCompletionExpected).toISOString().split('T')[0] : '',
+          amountToBePaid: data.amountToBePaid || 0,
+          amountPaidToVendor: data.amountPaidToVendor || 0,
+          // Comprehensive order fields
+          dateOfCompletion: data.dateOfCompletion ? new Date(data.dateOfCompletion).toISOString().split('T')[0] : '',
+          countryToBeImplemented: data.countryToBeImplemented || '',
+          applicationDairyNumber: data.applicationDairyNumber || '',
+          dateOfFilingAtPO: data.dateOfFilingAtPO ? new Date(data.dateOfFilingAtPO).toISOString().split('T')[0] : '',
+          lawyerReferenceNumber: data.lawyerReferenceNumber || ''
         })
       } else {
         const errorData = await response.json()
@@ -243,12 +309,11 @@ export default function EditOrderPage() {
         )}
 
         {/* Edit Form */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
-
+        <div className="space-y-6">
+          {/* Basic Information */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Basic Information</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                 <input
@@ -258,18 +323,6 @@ export default function EditOrderPage() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="Enter order title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter order description"
                 />
               </div>
 
@@ -289,6 +342,18 @@ export default function EditOrderPage() {
                 </select>
               </div>
 
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter order description"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
                 <input
@@ -300,12 +365,25 @@ export default function EditOrderPage() {
                   placeholder="Enter country"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country to be Implemented in</label>
+                <input
+                  type="text"
+                  name="countryToBeImplemented"
+                  value={formData.countryToBeImplemented}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter country to be implemented in"
+                />
+              </div>
             </div>
+          </div>
 
-            {/* Status and Financial */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Status & Financial</h3>
-
+          {/* Status and Financial */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">Status & Financial Information</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
@@ -340,7 +418,10 @@ export default function EditOrderPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount ($)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <IndianRupee className="inline h-4 w-4 mr-1" />
+                  Total Amount (INR)
+                </label>
                 <input
                   type="number"
                   name="amount"
@@ -354,7 +435,10 @@ export default function EditOrderPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount ($)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <IndianRupee className="inline h-4 w-4 mr-1" />
+                  Paid Amount (INR)
+                </label>
                 <input
                   type="number"
                   name="paidAmount"
@@ -368,7 +452,10 @@ export default function EditOrderPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Due Date
+                </label>
                 <input
                   type="date"
                   name="dueDate"
@@ -376,6 +463,266 @@ export default function EditOrderPage() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Date of Completion
+                </label>
+                <input
+                  type="date"
+                  name="dateOfCompletion"
+                  value={formData.dateOfCompletion}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Vendor Information */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-green-700 mb-4 border-b border-gray-200 pb-2">Vendor Information</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Date of Onboarding vendor for this order
+                </label>
+                <input
+                  type="date"
+                  name="onboardingDate"
+                  value={formData.onboardingDate}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <AlertCircle className="inline h-4 w-4 mr-1" />
+                  Current Status
+                </label>
+                <select
+                  name="currentStatus"
+                  value={formData.currentStatus}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="">Select current status</option>
+                  {vendorStatusOptions.map(status => (
+                    <option key={status.value} value={status.value}>{status.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <MessageSquare className="inline h-4 w-4 mr-1" />
+                  Status Comment
+                </label>
+                <textarea
+                  name="statusComment"
+                  value={formData.statusComment}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Comments about status changes will be stored for showing on order page"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Date of change of status
+                </label>
+                <input
+                  type="date"
+                  name="statusChangeDate"
+                  value={formData.statusChangeDate}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Date of work completion expected from vendor
+                </label>
+                <input
+                  type="date"
+                  name="workCompletionExpected"
+                  value={formData.workCompletionExpected}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <IndianRupee className="inline h-4 w-4 mr-1" />
+                  Amount to be Paid to vendor (INR)
+                </label>
+                <input
+                  type="number"
+                  name="amountToBePaid"
+                  value={formData.amountToBePaid}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter amount to be paid in INR"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <IndianRupee className="inline h-4 w-4 mr-1" />
+                  Amount Paid to vendor (INR)
+                </label>
+                <input
+                  type="number"
+                  name="amountPaidToVendor"
+                  value={formData.amountPaidToVendor}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter amount paid in INR"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Order Details */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-purple-700 mb-4 border-b border-gray-200 pb-2">Additional Order Details</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Hash className="inline h-4 w-4 mr-1" />
+                  Application/Dairy Number
+                </label>
+                <input
+                  type="text"
+                  name="applicationDairyNumber"
+                  value={formData.applicationDairyNumber}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter application/dairy number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Calendar className="inline h-4 w-4 mr-1" />
+                  Date of Filing at PO
+                </label>
+                <input
+                  type="date"
+                  name="dateOfFilingAtPO"
+                  value={formData.dateOfFilingAtPO}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Hash className="inline h-4 w-4 mr-1" />
+                  Lawyer Reference Number
+                </label>
+                <input
+                  type="text"
+                  name="lawyerReferenceNumber"
+                  value={formData.lawyerReferenceNumber}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter lawyer reference number"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Document Uploads */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-blue-700 mb-4 border-b border-gray-200 pb-2">Document Management</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Upload className="inline h-4 w-4 mr-1" />
+                  Documents Provided by vendor
+                </label>
+                {order?.documentsProvidedUrl && (
+                  <div className="mb-2 p-2 bg-green-50 rounded border">
+                    <p className="text-sm text-green-700">Current file:
+                      <a href={order.documentsProvidedUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View Document
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange('documentsProvided', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+                {files.documentsProvided && (
+                  <p className="text-sm text-green-600 mt-1">✓ {files.documentsProvided.name}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Upload className="inline h-4 w-4 mr-1" />
+                  Invoice from the Vendor
+                </label>
+                {order?.invoiceFromVendorUrl && (
+                  <div className="mb-2 p-2 bg-blue-50 rounded border">
+                    <p className="text-sm text-blue-700">Current file:
+                      <a href={order.invoiceFromVendorUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View Invoice
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange('invoiceFromVendor', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {files.invoiceFromVendor && (
+                  <p className="text-sm text-blue-600 mt-1">✓ {files.invoiceFromVendor.name}</p>
+                )}
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Upload className="inline h-4 w-4 mr-1" />
+                  Work Documents
+                </label>
+                {order?.workDocumentsUrl && (
+                  <div className="mb-2 p-2 bg-purple-50 rounded border">
+                    <p className="text-sm text-purple-700">Current file:
+                      <a href={order.workDocumentsUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">
+                        View Work Documents
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => handleFileChange('workDocuments', e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                {files.workDocuments && (
+                  <p className="text-sm text-purple-600 mt-1">✓ {files.workDocuments.name}</p>
+                )}
               </div>
             </div>
           </div>

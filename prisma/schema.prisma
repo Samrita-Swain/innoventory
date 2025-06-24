@@ -111,6 +111,7 @@ model Vendor {
   country          String
   address          String?
   specialization   String?
+  rating           Float?
   onboardingDate   DateTime?
   companyType      String?
   companyName      String?

@@ -428,7 +428,7 @@ export default function NewCustomerPage() {
                 {/* Phone */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company's Number *
+                    Company's Phone Number *
                   </label>
                   <input
                     type="tel"
